@@ -124,6 +124,23 @@ void Parser::onUDPPacket(const char *buf, size_t len)
     }
 }
 
+char Parser::mapAscii(char c) {
+  return c == 0x20 ? 0x00: c;
+}
+
+unsigned long long Parser::getOrderRef(char *in, int offset) {
+ unsigned long long orderRef = (
+    (unsigned long long)(in[offset]) << 54 |
+    (unsigned long long)(in[offset+1]) << 48 |
+    (unsigned long long)(in[offset+2]) << 40 |
+    (unsigned long long)(in[offset+3]) << 32 |
+    (unsigned long long)(in[offset+4]) << 24 |
+    (unsigned long long)(in[offset+5]) << 16 |
+    (unsigned long long)(in[offset+6]) << 8 |
+    (unsigned long long)(in[offset+7]));
+  return orderRef;
+}
+
 char* Parser::mapAdd(char *in) {
   char* out = new char[44];
   // Msg type. Offset 0, length 2.
@@ -134,14 +151,14 @@ char* Parser::mapAdd(char *in) {
   out[3] = 0x2C;
   // Stock Ticker. Offset 4, length 8.
   // Replace alphanumeric ASCII space with null.
-  out[4] = in[22 - 1] == 0x20 ? 0x00: in[22 -1 ];
-  out[5] = in[23 - 1] == 0x20 ? 0x00 : in[23 - 1];
-  out[6] = in[24 - 1] == 0x20 ? 0x00: in[24 - 1];
-  out[7] = in[25 - 1] == 0x20 ? 0x00: in[25 - 1];
-  out[8] = in[26 - 1] == 0x20 ? 0x00: in[26 - 1];
-  out[9] = in[27 - 1] == 0x20 ? 0x00: in[27 - 1];
-  out[10] = in[28 - 1] == 0x20 ? 0x00: in[28 - 1];
-  out[11] = in[29 - 1] == 0x20 ? 0x00: in[29 -1 ];
+  out[4] = mapAscii(in[22 - 1]);
+  out[5] = mapAscii(in[23 - 1]);
+  out[6] = mapAscii(in[24 - 1]);
+  out[7] = mapAscii(in[25 - 1]);
+  out[8] = mapAscii(in[26 - 1]);
+  out[9] = mapAscii(in[27 - 1]);
+  out[10] = mapAscii(in[28 - 1]);
+  out[11] = mapAscii(in[29 - 1]);
   // Timestamp. Offset 12, length 8.
   // Order reference number. Offset 20, length 8.
   out[20] = in[16 - 1];
@@ -152,6 +169,19 @@ char* Parser::mapAdd(char *in) {
   out[25] = in[11 - 1];
   out[26] = in[10 - 1];
   out[27] = in[9 - 1];
+  unsigned long long orderRef = getOrderRef(in, 20);
+  Order_t o = {
+    mapAscii(in[22 - 1]),
+    mapAscii(in[23 - 1]),
+    mapAscii(in[24 - 1]),
+    mapAscii(in[25 - 1]),
+    mapAscii(in[26 - 1]),
+    mapAscii(in[27 - 1]),
+    mapAscii(in[28 - 1]),
+    mapAscii(in[29 - 1]),
+  };
+  orders[orderRef] = o;
+
   // Side. Offset 28, length 1.
   out[28] = in[17 - 1];
   // Padding. Offset 29, length 3.
@@ -175,7 +205,20 @@ char* Parser::mapExecuted(char *in) {
   // Msg size. Offset 2, length 2.
   out[2] = 0x00;
   out[3] = 0x28;
-  // TODO: stock ticker. offset 4, length 8. Lookup from order reference number.
+
+  // Lookup add order using order ref.
+  unsigned long long orderRef = getOrderRef(in, 20);
+  Order_t o = orders[orderRef];
+  // Stock ticker. Offset 4, length 8.
+  out[4] = o.a;
+  out[5] = o.b;
+  out[6] = o.c;
+  out[7] = o.d;
+  out[8] = o.e;
+  out[9] = o.f;
+  out[10] = o.g;
+  out[11] = o.h;
+
   // TODO: timestamp. offset 12, length 8. map.
   // Order reference number. Offset 20, length 8.
   out[20] = in[16-1];
@@ -204,8 +247,18 @@ char* Parser::mapReduced(char* in) {
   out[2] = 0x00;
   out[3] = 0x20;
 
+  // Lookup add order using order ref.
+  unsigned long long orderRef = getOrderRef(in, 20);
+  Order_t o = orders[orderRef];
   // Stock ticker. Offset 4, length 8.
-  // TODO use reference number to lookup.
+  out[4] = o.a;
+  out[5] = o.b;
+  out[6] = o.c;
+  out[7] = o.d;
+  out[8] = o.e;
+  out[9] = o.f;
+  out[10] = o.g;
+  out[11] = o.h;
 
   // Timestamp, offset 12, length 8.
   // TODO: map from *in.
@@ -237,10 +290,28 @@ char* Parser::mapReplaced(char *in) {
   out[2] = 0x00;
   out[3] = 0x30;
   
-  // TODO: lookup old order reference.
-  // TODO: stock ticker, offset 4, length 8. lookup from old order reference.
+  // Lookup add order using order ref.
+  unsigned long long orderRef = getOrderRef(in, 20);
+  Order_t o = orders[orderRef];
+  // Stock ticker. Offset 4, length 8.
+  out[4] = o.a;
+  out[5] = o.b;
+  out[6] = o.c;
+  out[7] = o.d;
+  out[8] = o.e;
+  out[9] = o.f;
+  out[10] = o.g;
+  out[11] = o.h;
   // TODO: timestamp. offset 12, length 8, map timestamp from *in.
-  // TODO: old order reference. offset 20, length 8, big->little endian mapping
+  // Older order reference number. offset 20, length 8.
+  out[20] = in[16-1];
+  out[21] = in[15-1];
+  out[22] = in[14-1];
+  out[23] = in[13-1];
+  out[24] = in[12-1];
+  out[25] = in[11-1];
+  out[26] = in[10-1];
+  out[27] = in[9-1];
   // New order reference number. offset 28, length 8.
   out[28] = in[24-1];
   out[29] = in[23-1];

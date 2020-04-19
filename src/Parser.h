@@ -4,6 +4,16 @@
 #include <queue>          // std::queue
 #include <unordered_map>  // std::unordered_map
 
+struct Order_t {
+  char a;
+  char b;
+  char c;
+  char d;
+  char e;
+  char f;
+  char g;
+  char h;
+};
 class Parser {
   // The next desired packet in sequence. 
   int pos;
@@ -12,11 +22,19 @@ class Parser {
   std::queue<char> q;
   // Remembers packets that arrive "early" / out of sequence.
   std::unordered_map<uint16_t, const char*> m;
+  std::unordered_map<unsigned long long, Order_t> orders;
 
   char* mapAdd(char* in);
   char* mapExecuted(char* in);
   char* mapReduced(char* in);
   char* mapReplaced(char* in);
+
+  // Get the order dictionary key given the buffer, and offset to
+  // start looking for the key.
+  unsigned long long getOrderRef(char *in, int offset);
+
+  // Map alphanumeric character.
+  char mapAscii(char c);
 
   char* popNBytes(int n);
 
