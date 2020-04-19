@@ -5,8 +5,12 @@
 #include <unordered_map>  // std::unordered_map
 
 class Parser {
+  // The next desired packet in sequence. 
   int pos;
+  // Accumulated sequence of bytes spread across between adjacent packets.
+  // Processed/Flushed when a complete order message is formed.
   std::queue<char> q;
+  // Remembers packets that arrive "early" / out of sequence.
   std::unordered_map<uint16_t, const char*> m;
 
   public:

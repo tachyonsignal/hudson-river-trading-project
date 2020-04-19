@@ -11,10 +11,6 @@
 #include <sys/uio.h>
 #include <stdexcept>
 
-
-// Buffer of size 64
-// Index of packet waiting to write
-
 Parser::Parser(int date, const std::string &outputFilename)
 {
     pos = 1;
@@ -62,10 +58,40 @@ void Parser::onUDPPacket(const char *buf, size_t len)
           pos++;
           payload = m.find(pos);
        }
+
+       // There's atleast 1 message that is processable.
+       while(q.size() >= 34 ||
+            (q.size() >= 33 && q.front() != 0x41) ||
+            (q.size() >= 21 && q.front() == 0x58 && q.front() == 0x52))
+        {
+         char msgType = q.front();
+         q.pop();
+
+         bool isAdd = msgType == 0x41;
+         bool isExecuted = msgType == 0x45;
+         bool isCanceled = msgType == 0x58;
+         bool isReplaced = msgType == 0x52;
+         int remainingBytes;
+         if(isAdd) {
+           remainingBytes = 34 - 1;
+         } else if(isExecuted) {
+           remainingBytes = 21 - 1;
+         } else if(isCanceled) {
+           isCanceled = 21 - 4;
+         } else if(isReplaced) {
+           isReplaced = 33 - 1;
+         } else {
+           throw std::runtime_error("Unexpected message type");
+         }
+         // TODO: replace with reading from q->struct accordingly.
+         for(int i = 0 ; i < remainingBytes; i++) {
+            q.pop();
+         }
+       }
     } else if (sequenceNumber < pos) {
-      // Skip, already proccessed
+      // Skip, duplicate / already proccessed.
     } else {
-      // Store for revisit until the gap between sequence is closed.
+      // Store for revisit when the gap in sequence is closed.
       m[sequenceNumber] = buf;
     }
 }
