@@ -52,9 +52,10 @@ void Parser::onUDPPacket(const char *buf, size_t len)
        // Queue previously skipped payloads.
        auto payload = m.find(pos);
        while(payload != m.end()) {
-          uint16_t prevPacketSize  = (uint16_t)((buf[0] << 8) | buf[1]);
+          const char* forwardBuf = payload->second;
+          uint16_t prevPacketSize  = (uint16_t)((forwardBuf[0] << 8) | forwardBuf[1]);
           for( int i = 6; i < static_cast<int>(prevPacketSize); i++) {
-            q.push(buf[i]);
+            q.push(forwardBuf[i]);
           }
           pos++;
           payload = m.find(pos);
@@ -208,7 +209,12 @@ char* Parser::mapExecuted(char *in) {
 
   // Lookup add order using order ref.
   unsigned long long orderRef = getOrderRef(in, 20);
-  Order_t o = orders[orderRef];
+  auto order  = orders.find(orderRef);
+  if(order == orders.end()) {
+    // TODO: Throw with order ref #.
+    throw std::runtime_error("Order ref was not found.");
+  }
+  Order_t o = order->second;
   // Stock ticker. Offset 4, length 8.
   out[4] = o.a;
   out[5] = o.b;
@@ -249,8 +255,12 @@ char* Parser::mapReduced(char* in) {
 
   // Lookup add order using order ref.
   unsigned long long orderRef = getOrderRef(in, 20);
-  Order_t o = orders[orderRef];
-  // Stock ticker. Offset 4, length 8.
+  auto order  = orders.find(orderRef);
+  if(order == orders.end()) {
+    // TODO: Throw with order ref #.
+    throw std::runtime_error("Order ref was not found.");
+  }
+  Order_t o = order->second;
   out[4] = o.a;
   out[5] = o.b;
   out[6] = o.c;
@@ -292,7 +302,12 @@ char* Parser::mapReplaced(char *in) {
   
   // Lookup add order using order ref.
   unsigned long long orderRef = getOrderRef(in, 20);
-  Order_t o = orders[orderRef];
+  auto order  = orders.find(orderRef);
+  if(order == orders.end()) {
+    // TODO: Throw with order ref #.
+    throw std::runtime_error("Order ref was not found.");
+  }
+  Order_t o = order->second;
   // Stock ticker. Offset 4, length 8.
   out[4] = o.a;
   out[5] = o.b;
