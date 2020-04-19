@@ -49,3 +49,14 @@ make libparser.a
 
 Produces Parser.o, and libparser.a
 
+```
+make
+```
+
+Shortcut for 
+
+```
+make feed
+```
+
+Which produces: Parser.o, libparsr.a, feed
