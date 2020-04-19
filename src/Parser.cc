@@ -86,11 +86,32 @@ void Parser::onUDPPacket(const char *buf, size_t len)
 
            delete out;
          } else if(isExecuted) {
-           popNBytes(21 - 1);
+           char* in = popNBytes(21 - 1);
+           char* out = mapExecuted(in);
+           delete in;
+           std::ofstream outfile;
+           outfile.open("new.txt", std::ios_base::app); // append instead of overwrite
+           outfile.write(out, 40);
+           outfile.close();
+           delete out;
          } else if(isCanceled) {
-           popNBytes(21 - 1);
+           char* in = popNBytes(21 - 1);
+           char* out = mapReduced(in);
+           delete in;
+           std::ofstream outfile;
+           outfile.open("new.txt", std::ios_base::app); // append instead of overwrite
+           outfile.write(out, 32);
+           outfile.close();
+           delete out;
          } else if(isReplaced) {
-           popNBytes(33 - 1);
+           char* in = popNBytes(33 - 1);
+           char* out = mapReplaced(in);
+           delete in;
+           std::ofstream outfile;
+           outfile.open("new.txt", std::ios_base::app); // append instead of overwrite
+           outfile.write(out, 48);
+           outfile.close();
+           delete out;
          } else {
            throw std::runtime_error("Unexpected message type");
          }
@@ -142,6 +163,99 @@ char* Parser::mapAdd(char *in) {
   out[33] = in[20 - 1];
   out[34] = in[19 - 1];
   out[35] = in[18 - 1];
+
+  return out;
+}
+
+char* Parser::mapExecuted(char *in) {
+  char* out = new char[40];
+  // Msg type. Offset 0, length 2.
+  out[0] = 0x00;
+  out[1] = 0x02;
+  // Msg size. Offset 2, length 2.
+  out[2] = 0x00;
+  out[3] = 0x28;
+  // TODO: stock ticker. offset 4, length 8. Lookup from order reference number.
+  // TODO: timestamp. offset 12, length 8. map.
+  // Order reference number. Offset 20, length 8.
+  out[20] = in[16-1];
+  out[21] = in[15-1];
+  out[22] = in[14-1];
+  out[23] = in[13-1];
+  out[24] = in[12-1];
+  out[25] = in[11-1];
+  out[26] = in[10-1];
+  out[27] = in[9-1];
+  // Size. Offset 28, length 4.
+  out[28] = in[20-1];
+  out[29] = in[19-1];
+  out[30] = in[18-1];
+  out[31] = in[17-1];
+  // TOOD: price. offset 32, length 8. map floating point. lookup from order ref.
+  return out;
+}
+
+char* Parser::mapReduced(char* in) {
+  char* out = new char[32];
+  // Msg type. Offset 0, length 2.
+  out[0] = 0x00;
+  out[1] = 0x03;
+    // Msg size. Offset 2, length 2.
+  out[2] = 0x00;
+  out[3] = 0x20;
+
+  // Stock ticker. Offset 4, length 8.
+  // TODO use reference number to lookup.
+
+  // Timestamp, offset 12, length 8.
+  // TODO: map from *in.
+
+  // Order ref number. Offset 20, length 8.
+  out[20] = in[16-1];
+  out[21] = in[15-1];
+  out[22] = in[14-1];
+  out[23] = in[13-1];
+  out[24] = in[12-1];
+  out[25] = in[11-1];
+  out[26] = in[10-1];
+  out[27] = in[9-1];
+  // Size remaining. Offset 28, length 4.
+  // TODO: do substraction from ord er ref - *in.
+  // TODO: watchout for endianness.
+  // out[28] = 
+  // out[29] = 
+  // out[30] = 
+  // out[31] = 
+}
+
+char* Parser::mapReplaced(char *in) {
+  char* out = new char[48];
+  // Msg type. Offset 0, length 2.
+  out[0] = 0x00;
+  out[1] = 0x04;
+  // Msg size. Offset 2, length 2.
+  out[2] = 0x00;
+  out[3] = 0x30;
+  
+  // TODO: lookup old order reference.
+  // TODO: stock ticker, offset 4, length 8. lookup from old order reference.
+  // TODO: timestamp. offset 12, length 8, map timestamp from *in.
+  // TODO: old order reference. offset 20, length 8, big->little endian mapping
+  // New order reference number. offset 28, length 8.
+  out[28] = in[24-1];
+  out[29] = in[23-1];
+  out[30] = in[22-1];
+  out[31] = in[21-1];
+  out[32] = in[20-1];
+  out[33] = in[19-1];
+  out[34] = in[18-1];
+  out[35] = in[17-1];
+  // New size. Offset 36, length 4.
+  out[36] = in[28-1];
+  out[37] = in[27-1];
+  out[38] = in[26-1];
+  out[39] = in[25-1];
+  // New price. offset 40, length 8. mapping floating point.
 
   return out;
 }

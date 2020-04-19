@@ -14,6 +14,10 @@ class Parser {
   std::unordered_map<uint16_t, const char*> m;
 
   char* mapAdd(char* in);
+  char* mapExecuted(char* in);
+  char* mapReduced(char* in);
+  char* mapReplaced(char* in);
+
   char* popNBytes(int n);
 
   public:
