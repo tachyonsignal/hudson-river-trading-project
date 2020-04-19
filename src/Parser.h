@@ -13,6 +13,9 @@ class Parser {
   // Remembers packets that arrive "early" / out of sequence.
   std::unordered_map<uint16_t, const char*> m;
 
+  char* mapAdd(char* in);
+  char* popNBytes(int n);
+
   public:
     // date - the day on which the data being parsed was generated.
     // It is specified as an integer in the form yyyymmdd.

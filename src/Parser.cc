@@ -10,15 +10,16 @@
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <stdexcept>
+#include <fstream>
 
 Parser::Parser(int date, const std::string &outputFilename)
 {
     pos = 1;
 
-    int fd = open(outputFilename.c_str(), O_WRONLY);
-    if (fd == -1) {
-        fprintf(stderr, "Couldn't open file '%s'.\n", outputFilename.c_str());
-    }
+    // Empty the file.
+    std::ofstream outfile;
+    outfile.open("new.txt");
+    outfile.close();
 }
 
 void Parser::onUDPPacket(const char *buf, size_t len)
@@ -71,21 +72,27 @@ void Parser::onUDPPacket(const char *buf, size_t len)
          bool isExecuted = msgType == 0x45;
          bool isCanceled = msgType == 0x58;
          bool isReplaced = msgType == 0x52;
-         int remainingBytes;
+
          if(isAdd) {
-           remainingBytes = 34 - 1;
+           char* in = popNBytes(34 - 1);
+           char* out = mapAdd(in);
+           // TODO: delete[] vs delete.
+           delete in;
+
+           std::ofstream outfile;
+           outfile.open("new.txt", std::ios_base::app); // append instead of overwrite
+           outfile.write(out, 44);
+           outfile.close();
+
+           delete out;
          } else if(isExecuted) {
-           remainingBytes = 21 - 1;
+           popNBytes(21 - 1);
          } else if(isCanceled) {
-           isCanceled = 21 - 4;
+           popNBytes(21 - 1);
          } else if(isReplaced) {
-           isReplaced = 33 - 1;
+           popNBytes(33 - 1);
          } else {
            throw std::runtime_error("Unexpected message type");
-         }
-         // TODO: replace with reading from q->struct accordingly.
-         for(int i = 0 ; i < remainingBytes; i++) {
-            q.pop();
          }
        }
     } else if (sequenceNumber < pos) {
@@ -96,3 +103,54 @@ void Parser::onUDPPacket(const char *buf, size_t len)
     }
 }
 
+char* Parser::mapAdd(char *in) {
+  char* out = new char[44];
+  // Msg type. Offset 0, length 2.
+  out[0] = 0x00;
+  out[1] = 0x01;
+  // Msg size. Offset 2, length 2.
+  out[2] = 0x00;
+  out[3] = 0x2C;
+  // Stock Ticker. Offset 4, length 8.
+  // Replace alphanumeric ASCII space with null.
+  out[4] = in[22 - 1] == 0x20 ? 0x00: in[22 -1 ];
+  out[5] = in[23 - 1] == 0x20 ? 0x00 : in[23 - 1];
+  out[6] = in[24 - 1] == 0x20 ? 0x00: in[24 - 1];
+  out[7] = in[25 - 1] == 0x20 ? 0x00: in[25 - 1];
+  out[8] = in[26 - 1] == 0x20 ? 0x00: in[26 - 1];
+  out[9] = in[27 - 1] == 0x20 ? 0x00: in[27 - 1];
+  out[10] = in[28 - 1] == 0x20 ? 0x00: in[28 - 1];
+  out[11] = in[29 - 1] == 0x20 ? 0x00: in[29 -1 ];
+  // Timestamp. Offset 12, length 8.
+  // Order reference number. Offset 20, length 8.
+  out[20] = in[16 - 1];
+  out[21] = in[15 - 1];
+  out[22] = in[14 - 1];
+  out[23] = in[13 - 1];
+  out[24] = in[12 - 1];
+  out[25] = in[11 - 1];
+  out[26] = in[10 - 1];
+  out[27] = in[9 - 1];
+  // Side. Offset 28, length 1.
+  out[28] = in[17 - 1];
+  // Padding. Offset 29, length 3.
+  out[29] = 0x00;
+  out[30] = 0x00;
+  out[31] = 0x00;
+  // Size. Offset 32, length 4.
+  out[32] = in[21 - 1];
+  out[33] = in[20 - 1];
+  out[34] = in[19 - 1];
+  out[35] = in[18 - 1];
+
+  return out;
+}
+
+char* Parser::popNBytes(int n) {
+  char* out = new char[n];
+  for(int i = 0 ; i < n; i++) {
+    out[i] = q.front();
+    q.pop();
+  }
+  return out;
+}
