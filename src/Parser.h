@@ -13,10 +13,15 @@ struct Order_t {
   char f;
   char g;
   char h;
+  double price;
 };
 class Parser {
   // The next desired packet in sequence. 
   int pos;
+  // The file to write to.
+  std::string filename;
+
+
   // Accumulated sequence of bytes spread across between adjacent packets.
   // Processed/Flushed when a complete order message is formed.
   std::queue<char> q;

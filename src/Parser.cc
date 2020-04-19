@@ -15,10 +15,11 @@
 Parser::Parser(int date, const std::string &outputFilename)
 {
     pos = 1;
+    filename = outputFilename;
 
     // Empty the file.
     std::ofstream outfile;
-    outfile.open("new.txt");
+    outfile.open(outputFilename);
     outfile.close();
 }
 
@@ -81,7 +82,7 @@ void Parser::onUDPPacket(const char *buf, size_t len)
            delete in;
 
            std::ofstream outfile;
-           outfile.open("new.txt", std::ios_base::app); // append instead of overwrite
+           outfile.open(filename, std::ios_base::app); // append instead of overwrite
            outfile.write(out, 44);
            outfile.close();
 
@@ -91,7 +92,7 @@ void Parser::onUDPPacket(const char *buf, size_t len)
            char* out = mapExecuted(in);
            delete in;
            std::ofstream outfile;
-           outfile.open("new.txt", std::ios_base::app); // append instead of overwrite
+           outfile.open(filename, std::ios_base::app); // append instead of overwrite
            outfile.write(out, 40);
            outfile.close();
            delete out;
@@ -100,7 +101,7 @@ void Parser::onUDPPacket(const char *buf, size_t len)
            char* out = mapReduced(in);
            delete in;
            std::ofstream outfile;
-           outfile.open("new.txt", std::ios_base::app); // append instead of overwrite
+           outfile.open(filename, std::ios_base::app); // append instead of overwrite
            outfile.write(out, 32);
            outfile.close();
            delete out;
@@ -109,7 +110,7 @@ void Parser::onUDPPacket(const char *buf, size_t len)
            char* out = mapReplaced(in);
            delete in;
            std::ofstream outfile;
-           outfile.open("new.txt", std::ios_base::app); // append instead of overwrite
+           outfile.open(filename, std::ios_base::app); // append instead of overwrite
            outfile.write(out, 48);
            outfile.close();
            delete out;
@@ -170,18 +171,6 @@ char* Parser::mapAdd(char *in) {
   out[25] = in[11 - 1];
   out[26] = in[10 - 1];
   out[27] = in[9 - 1];
-  unsigned long long orderRef = getOrderRef(in, 20);
-  Order_t o = {
-    mapAscii(in[22 - 1]),
-    mapAscii(in[23 - 1]),
-    mapAscii(in[24 - 1]),
-    mapAscii(in[25 - 1]),
-    mapAscii(in[26 - 1]),
-    mapAscii(in[27 - 1]),
-    mapAscii(in[28 - 1]),
-    mapAscii(in[29 - 1]),
-  };
-  orders[orderRef] = o;
 
   // Side. Offset 28, length 1.
   out[28] = in[17 - 1];
@@ -194,6 +183,40 @@ char* Parser::mapAdd(char *in) {
   out[33] = in[20 - 1];
   out[34] = in[19 - 1];
   out[35] = in[18 - 1];
+
+  // Price. Offset 36, length 8.
+  uint8_t *s = new uint8_t[4];
+  s[0] = in[30-1];
+  s[1] = in[31-1];
+  s[2] = in[32-2];
+  s[3] = in[33-3];
+  int32_t priceInt = ((uint32_t)s[0] << 24) + ((uint32_t)s[1] << 16) + ((uint32_t)s[2] << 8) + s[3];
+  double priceDouble = double(priceInt);
+  char* priceBytes = reinterpret_cast<char*>(&priceDouble);
+  // On x86, the bytes of the double are already in little-endian order.
+  out[36] = priceBytes[0];
+  out[37] = priceBytes[1];
+  out[38] = priceBytes[2];
+  out[39] = priceBytes[3];
+  out[40] = priceBytes[4];
+  out[41] = priceBytes[5];
+  out[42] = priceBytes[6];
+  out[43] = priceBytes[7];
+  delete[] s;
+
+  unsigned long long orderRef = getOrderRef(in, 20);
+  Order_t o = {
+    mapAscii(in[22 - 1]),
+    mapAscii(in[23 - 1]),
+    mapAscii(in[24 - 1]),
+    mapAscii(in[25 - 1]),
+    mapAscii(in[26 - 1]),
+    mapAscii(in[27 - 1]),
+    mapAscii(in[28 - 1]),
+    mapAscii(in[29 - 1]),
+    priceDouble
+  };
+  orders[orderRef] = o;
 
   return out;
 }
@@ -240,7 +263,18 @@ char* Parser::mapExecuted(char *in) {
   out[29] = in[19-1];
   out[30] = in[18-1];
   out[31] = in[17-1];
-  // TOOD: price. offset 32, length 8. map floating point. lookup from order ref.
+
+  char* priceBytes = reinterpret_cast<char*>(&o.price);
+  // On x86, the bytes of the double are in little-endian order.
+  out[32] = priceBytes[0];
+  out[33] = priceBytes[1];
+  out[34] = priceBytes[2];
+  out[35] = priceBytes[3];
+  out[36] = priceBytes[4];
+  out[37] = priceBytes[5];
+  out[38] = priceBytes[6];
+  out[39] = priceBytes[7];
+
   return out;
 }
 
@@ -341,7 +375,25 @@ char* Parser::mapReplaced(char *in) {
   out[37] = in[27-1];
   out[38] = in[26-1];
   out[39] = in[25-1];
-  // New price. offset 40, length 8. mapping floating point.
+
+  uint8_t *s = new uint8_t[4];
+  s[0] = in[29-1];
+  s[1] = in[30-1];
+  s[2] = in[31-2];
+  s[3] = in[32-3];
+  int32_t priceInt = ((uint32_t)s[0] << 24) + ((uint32_t)s[1] << 16) + ((uint32_t)s[2] << 8) + s[3];
+  double priceDouble = double(priceInt);
+  char* priceBytes = reinterpret_cast<char*>(&priceDouble);
+  // On x86, the bytes of the double are in little-endian order.
+  out[40] = priceBytes[0];
+  out[41] = priceBytes[1];
+  out[42] = priceBytes[2];
+  out[43] = priceBytes[3];
+  out[44] = priceBytes[4];
+  out[45] = priceBytes[5];
+  out[46] = priceBytes[6];
+  out[47] = priceBytes[7];
+  delete[] s;
 
   return out;
 }

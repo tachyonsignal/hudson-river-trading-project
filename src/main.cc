@@ -10,11 +10,14 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/uio.h>
+#include <iostream>
+#include <fstream>
 
 const char *inputFile = "test.in";
 const char *outputFile = "output";
 
 int main(int argc, char **argv) {
+
     constexpr int currentDate = 20180612;
     Parser myParser(currentDate, std::string(outputFile));
 
