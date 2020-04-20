@@ -14,7 +14,7 @@
 
 Parser::Parser(int date, const std::string &outputFilename)
 {
-    pos = 1;
+    sequencePosition = 1;
     filename = outputFilename;
 
     // Empty the file.
@@ -43,23 +43,23 @@ void Parser::onUDPPacket(const char *buf, size_t len)
     int payloadLength = static_cast<int>(len) - 6;
     printf("Payload length %zu\n", payloadLength);
 
-    if(sequenceNumber == pos) {
+    if(sequenceNumber == sequencePosition) {
        // Queue payload bytes of current payload.
        for( int i = 6; i < static_cast<int>(len); i++) {
            q.push(buf[i]);
        }
-       pos++;
+       sequencePosition++;
 
        // Queue payload bytes of previously skipped payloads.
-       auto payload = m.find(pos);
+       auto payload = m.find(sequencePosition);
        while(payload != m.end()) {
           const char* forwardBuf = payload->second;
           uint16_t prevPacketSize  = (uint16_t)((forwardBuf[0] << 8) | forwardBuf[1]);
           for( int i = 6; i < static_cast<int>(prevPacketSize); i++) {
             q.push(forwardBuf[i]);
           }
-          pos++;
-          payload = m.find(pos);
+          sequencePosition++;
+          payload = m.find(sequencePosition);
        }
 
        std::ofstream outfile;
@@ -96,7 +96,7 @@ void Parser::onUDPPacket(const char *buf, size_t len)
          }
        }
        outfile.close();
-    } else if (sequenceNumber < pos) {
+    } else if (sequenceNumber < sequencePosition) {
       // Duplicate packet that has already proccessed, ignore.
     } else {
       // Store for when the gap in packet sequence is closed.

@@ -10,15 +10,14 @@ struct Order_t {
   unsigned int size;
 };
 class Parser {
-  // The next desired packet in sequence. 
-  int pos;
+  // Sequence number of the next Packet whose payload can be queued.
+  int sequencePosition;
   // The file to write to.
   std::string filename;
 
-  // Accumulated sequence of bytes spread across between adjacent packets.
-  // Processed/Flushed when a complete order message is formed.
+  // Payload bytes that have been received but not yet processed.
   std::queue<char> q;
-  // Remembers packets that arrive "early" / out of sequence.
+  // Stash packets that arrive "early" / out of sequence.
   std::unordered_map<uint16_t, const char*> m;
   std::unordered_map<unsigned long long, Order_t> orders;
 
