@@ -14,13 +14,13 @@ struct Order_t {
   char g;
   char h;
   double price;
+  unsigned int size;
 };
 class Parser {
   // The next desired packet in sequence. 
   int pos;
   // The file to write to.
   std::string filename;
-
 
   // Accumulated sequence of bytes spread across between adjacent packets.
   // Processed/Flushed when a complete order message is formed.
@@ -37,7 +37,7 @@ class Parser {
   // Get the order dictionary key given the buffer, and offset to
   // start looking for the key.
   unsigned long long getOrderRef(char *in, int offset);
-  unsigned int Parser::getUint32(char *in, int offset);
+  unsigned int getUint32(char *in, int offset);
 
   // Map alphanumeric character.
   char mapAscii(char c);

@@ -224,7 +224,8 @@ char* Parser::mapAdd(char *in) {
     mapAscii(in[27 - 1]),
     mapAscii(in[28 - 1]),
     mapAscii(in[29 - 1]),
-    priceDouble
+    priceDouble, 
+    sizeInt
   };
   orders[orderRef] = o;
 
@@ -333,12 +334,14 @@ char* Parser::mapReduced(char* in) {
   out[27] = orderRefLittleEndianBytes[7];
 
   // Size remaining. Offset 28, length 4.
-  // TODO: do substraction from ord er ref - *in.
-  // TODO: watchout for endianness.
-  // out[28] = 
-  // out[29] = 
-  // out[30] = 
-  // out[31] = 
+  unsigned int sizeInt = getUint32(in, 18-1);
+  unsigned int remainingSize = o.size - sizeInt;
+  o.size = remainingSize;
+  char* sizeBytes = reinterpret_cast<char*>(&remainingSize);
+  out[28] = sizeBytes[0];
+  out[29] = sizeBytes[1];
+  out[30] = sizeBytes[2];
+  out[31] = sizeBytes[3];
 }
 
 char* Parser::mapReplaced(char *in) {
