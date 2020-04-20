@@ -39,8 +39,7 @@ void Parser::onUDPPacket(const char *buf, size_t len) {
     if(static_cast<int>(packetSize) != static_cast<int>(len)) {
        throw std::runtime_error("Packet size does match buffer length");
     }
-    uint16_t sequenceNumber = (uint16_t)((
-        buf[2] << 24) | buf[3] << 16 | buf[4] << 8 | buf[5]);
+    unsigned int sequenceNumber = getUint32(buf, 2);
     printf("Sequence number %zu\n", sequenceNumber);
 
     int payloadLength = static_cast<int>(len) - 6;
@@ -108,7 +107,7 @@ void Parser::onUDPPacket(const char *buf, size_t len) {
     }
 }
 
-unsigned long long Parser::getUint64(char *in, int offset) {
+unsigned long long Parser::getUint64(const char *in, int offset) {
  unsigned long long orderRef = (
     (unsigned long long)(in[offset]) << 54 |
     (unsigned long long)(in[offset+1]) << 48 |
@@ -120,7 +119,7 @@ unsigned long long Parser::getUint64(char *in, int offset) {
     (unsigned long long)(in[offset+7]));
   return orderRef;
 }
-unsigned int Parser::getUint32(char *in, int offset) {
+unsigned int Parser::getUint32(const char *in, int offset) {
   return (
     (unsigned int)(in[offset]) << 24 |
     (unsigned int)(in[offset+1]) << 16 |
