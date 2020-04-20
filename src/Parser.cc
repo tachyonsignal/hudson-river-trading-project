@@ -142,6 +142,13 @@ unsigned long long Parser::getOrderRef(char *in, int offset) {
     (unsigned long long)(in[offset+7]));
   return orderRef;
 }
+unsigned int Parser::getUint32(char *in, int offset) {
+  return (
+    (unsigned int)(in[offset]) << 24 |
+    (unsigned int)(in[offset+1]) << 16 |
+    (unsigned int)(in[offset+2]) << 8 |
+    (unsigned int)(in[offset+3]));
+}
 
 char* Parser::mapAdd(char *in) {
   char* out = new char[44];
@@ -181,10 +188,12 @@ char* Parser::mapAdd(char *in) {
   out[30] = 0x00;
   out[31] = 0x00;
   // Size. Offset 32, length 4.
-  out[32] = in[21 - 1];
-  out[33] = in[20 - 1];
-  out[34] = in[19 - 1];
-  out[35] = in[18 - 1];
+  unsigned int sizeInt = getUint32(in, 18-1);
+  char* sizeBytes = reinterpret_cast<char*>(&sizeInt);
+  out[32] = sizeBytes[0];
+  out[33] = sizeBytes[1];
+  out[34] = sizeBytes[2];
+  out[35] = sizeBytes[3];
 
   // Price. Offset 36, length 8.
   uint8_t *s = new uint8_t[4];
@@ -262,10 +271,12 @@ char* Parser::mapExecuted(char *in) {
   out[27] = orderRefLittleEndianBytes[7];
 
   // Size. Offset 28, length 4.
-  out[28] = in[20-1];
-  out[29] = in[19-1];
-  out[30] = in[18-1];
-  out[31] = in[17-1];
+  unsigned int sizeInt = getUint32(in, 17-1);
+  char* sizeBytes = reinterpret_cast<char*>(&sizeInt);
+  out[28] = sizeBytes[0];
+  out[29] = sizeBytes[1];
+  out[30] = sizeBytes[2];
+  out[31] = sizeBytes[3];
 
   char* priceBytes = reinterpret_cast<char*>(&o.price);
   // On x86, the bytes of the double are in little-endian order.
@@ -377,10 +388,12 @@ char* Parser::mapReplaced(char *in) {
   out[34] = in[18-1];
   out[35] = in[17-1];
   // New size. Offset 36, length 4.
-  out[36] = in[28-1];
-  out[37] = in[27-1];
-  out[38] = in[26-1];
-  out[39] = in[25-1];
+  unsigned int sizeInt = getUint32(in, 25-1);
+  char* sizeBytes = reinterpret_cast<char*>(&sizeInt);
+  out[36] = sizeBytes[0];
+  out[37] = sizeBytes[1];
+  out[38] = sizeBytes[2];
+  out[39] = sizeBytes[3];
 
   uint8_t *s = new uint8_t[4];
   s[0] = in[29-1];

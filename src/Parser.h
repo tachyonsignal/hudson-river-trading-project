@@ -37,6 +37,7 @@ class Parser {
   // Get the order dictionary key given the buffer, and offset to
   // start looking for the key.
   unsigned long long getOrderRef(char *in, int offset);
+  unsigned int Parser::getUint32(char *in, int offset);
 
   // Map alphanumeric character.
   char mapAscii(char c);
