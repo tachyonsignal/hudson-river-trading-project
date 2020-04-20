@@ -156,53 +156,55 @@ char* Parser::mapAdd(char *in) {
   out[0] = 0x00, out[1] = 0x01;
   // Msg size. Offset 2, length 2.
   out[2] = 0x00, out[3] = 0x2C;
+
   // Stock Ticker. Offset 4, length 8.
   char* ticker = new char[8];
   for(int i = 0; i < 8; i++) {
-    char c = replaceAsciiSpace(in[22 - 1 + i]);
+    char c = in[22 - 1 + i];
+    // Replace space with null.
+    c == ' ' ? '\0': c;
     out[4+i] = c;
     ticker[i] = c;
   }
+
   // Timestamp. Offset 12, length 8.
+
   // Order reference number. Offset 20, length 8.
   unsigned long long orderRef = getUint64(in, 9-1);
   char* orderRefLittleEndianBytes = reinterpret_cast<char*>(&orderRef);
   for(int i = 0 ; i < 8; i++) {
     out[20+i] = orderRefLittleEndianBytes[i];
   }
+
   // Side. Offset 28, length 1.
   out[28] = in[17 - 1];
+
   // Padding. Offset 29, length 3.
   for(int i = 29; i <= 31; i++) {
     out[i] = 0x00;
   }
+
   // Size. Offset 32, length 4.
   unsigned int sizeInt = getUint32(in, 18-1);
   char* sizeBytes = reinterpret_cast<char*>(&sizeInt);
   for(int i = 0 ; i < 4; i++) {
-    out[32 + i ] = sizeBytes[i];
+    out[32 + i] = sizeBytes[i];
   }
 
   // Price. Offset 36, length 8.
-  uint8_t *s = new uint8_t[4];
-  for(int i = 0 ; i < 4; i++) {
-    s[i] = in[30 - 1 + i];
-  }
-  int32_t priceInt = ((uint32_t)s[0] << 24) + ((uint32_t)s[1] << 16) + ((uint32_t)s[2] << 8) + s[3];
+  int32_t priceInt = getUint32(in, 30 - 1);
   double priceDouble = double(priceInt);
   char* priceBytes = reinterpret_cast<char*>(&priceDouble);
   // On x86, the bytes of the double are already in little-endian order.
   for(int i = 0 ; i < 8; i++) {
     out[36 + i] = priceBytes[i];
   }
-  delete[] s;
 
-  Order_t o = {
+  orders[orderRef] = {
     ticker,
     priceDouble, 
     sizeInt
   };
-  orders[orderRef] = o;
 
   return out;
 }
@@ -228,6 +230,7 @@ char* Parser::mapExecuted(char *in) {
   }
 
   // TODO: timestamp. offset 12, length 8. map.
+
   // Order reference number. Offset 20, length 8.
   char* orderRefLittleEndianBytes = reinterpret_cast<char*>(&orderRef);
   for(int i = 0 ; i < 8; i++) {
@@ -331,21 +334,16 @@ char* Parser::mapReplaced(char *in) {
   unsigned int sizeInt = getUint32(in, 25-1);
   char* sizeBytes = reinterpret_cast<char*>(&sizeInt);
   for(int i = 0 ; i < 4; i++) {
-    out[36 + i ] = sizeBytes[i];
+    out[36 + i] = sizeBytes[i];
   }
 
-  uint8_t *s = new uint8_t[4];
-  for(int i = 0; i < 4; i++) {
-    s[i] = in[29-1 + i];
-  }
-  int32_t priceInt = ((uint32_t)s[0] << 24) + ((uint32_t)s[1] << 16) + ((uint32_t)s[2] << 8) + s[3];
+  int32_t priceInt = getUint32(in, 29-1);
   double priceDouble = double(priceInt);
   char* priceBytes = reinterpret_cast<char*>(&priceDouble);
   // On x86, the bytes of the double are in little-endian order.
   for(int i = 0 ; i < 8 ; i++) {
     out[40 + i] = priceBytes[i];
   }
-  delete[] s;
 
   return out;
 }
