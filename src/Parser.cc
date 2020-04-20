@@ -70,12 +70,7 @@ void Parser::onUDPPacket(const char *buf, size_t len)
          char msgType = q.front();
          q.pop();
 
-         bool isAdd = msgType == 0x41;
-         bool isExecuted = msgType == 0x45;
-         bool isCanceled = msgType == 0x58;
-         bool isReplaced = msgType == 0x52;
-
-         if(isAdd) {
+         if(msgType == 'A') {
            char* in = popNBytes(34 - 1);
            char* out = mapAdd(in);
            // TODO: delete[] vs delete.
@@ -87,7 +82,7 @@ void Parser::onUDPPacket(const char *buf, size_t len)
            outfile.close();
 
            delete out;
-         } else if(isExecuted) {
+         } else if(msgType == 'E') {
            char* in = popNBytes(21 - 1);
            char* out = mapExecuted(in);
            delete in;
@@ -96,7 +91,7 @@ void Parser::onUDPPacket(const char *buf, size_t len)
            outfile.write(out, 40);
            outfile.close();
            delete out;
-         } else if(isCanceled) {
+         } else if(msgType == 'X') {
            char* in = popNBytes(21 - 1);
            char* out = mapReduced(in);
            delete in;
@@ -105,7 +100,7 @@ void Parser::onUDPPacket(const char *buf, size_t len)
            outfile.write(out, 32);
            outfile.close();
            delete out;
-         } else if(isReplaced) {
+         } else if(msgType == 'R') {
            char* in = popNBytes(33 - 1);
            char* out = mapReplaced(in);
            delete in;
