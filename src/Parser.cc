@@ -44,13 +44,13 @@ void Parser::onUDPPacket(const char *buf, size_t len)
     printf("Payload length %zu\n", payloadLength);
 
     if(sequenceNumber == pos) {
-       // Queue current payload.
+       // Queue payload bytes of current payload.
        for( int i = 6; i < static_cast<int>(len); i++) {
            q.push(buf[i]);
        }
        pos++;
 
-       // Queue previously skipped payloads.
+       // Queue payload bytes of previously skipped payloads.
        auto payload = m.find(pos);
        while(payload != m.end()) {
           const char* forwardBuf = payload->second;
@@ -62,59 +62,44 @@ void Parser::onUDPPacket(const char *buf, size_t len)
           payload = m.find(pos);
        }
 
+       std::ofstream outfile;
+       outfile.open(filename, std::ios_base::app); // append instead of overwrite
+           
        // There's atleast 1 message that is processable.
        while(q.size() >= 34 ||
             (q.size() >= 33 && q.front() != 'A') ||
-            (q.size() >= 21 && (q.front() == 'X' || q.front() == 'R')))
-        {
+            (q.size() >= 21 && (q.front() == 'X' || q.front() == 'R'))) {
          char msgType = q.front();
          if(msgType == 'A') {
            char* in = popNBytes(34);
            char* out = mapAdd(in);
-           // TODO: delete[] vs delete.
-           delete in;
-
-           std::ofstream outfile;
-           outfile.open(filename, std::ios_base::app); // append instead of overwrite
+           delete[] in;
            outfile.write(out, 44);
-           outfile.close();
-
-           delete out;
+           delete[] out;
          } else if(msgType == 'E') {
            char* in = popNBytes(21);
            char* out = mapExecuted(in);
-           delete in;
-           std::ofstream outfile;
-           outfile.open(filename, std::ios_base::app); // append instead of overwrite
            outfile.write(out, 40);
-           outfile.close();
-           delete out;
+           delete[] in, delete[] out;
          } else if(msgType == 'X') {
            char* in = popNBytes(21);
            char* out = mapReduced(in);
-           delete in;
-           std::ofstream outfile;
-           outfile.open(filename, std::ios_base::app); // append instead of overwrite
            outfile.write(out, 32);
-           outfile.close();
-           delete out;
+           delete[] in, delete[] out;
          } else if(msgType == 'R') {
            char* in = popNBytes(33);
            char* out = mapReplaced(in);
-           delete in;
-           std::ofstream outfile;
-           outfile.open(filename, std::ios_base::app); // append instead of overwrite
            outfile.write(out, 48);
-           outfile.close();
-           delete out;
+           delete[] in, delete[] out;
          } else {
            throw std::runtime_error("Unexpected message type");
          }
        }
+       outfile.close();
     } else if (sequenceNumber < pos) {
-      // Skip, duplicate / already proccessed.
+      // Duplicate packet that has already proccessed, ignore.
     } else {
-      // Store for revisit when the gap in sequence is closed.
+      // Store for when the gap in packet sequence is closed.
       m[sequenceNumber] = buf;
     }
 }
