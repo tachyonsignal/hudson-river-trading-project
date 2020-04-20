@@ -5,14 +5,7 @@
 #include <unordered_map>  // std::unordered_map
 
 struct Order_t {
-  char a;
-  char b;
-  char c;
-  char d;
-  char e;
-  char f;
-  char g;
-  char h;
+  char * ticker;
   double price;
   unsigned int size;
 };
@@ -36,11 +29,11 @@ class Parser {
 
   // Get the order dictionary key given the buffer, and offset to
   // start looking for the key.
-  unsigned long long getOrderRef(char *in, int offset);
+  unsigned long long getUint64(char *in, int offset);
   unsigned int getUint32(char *in, int offset);
 
-  // Map alphanumeric character.
-  char mapAscii(char c);
+  // Map ASCII character, replacing space with null.
+  char replaceAsciiSpace(char c);
 
   char* popNBytes(int n);
 

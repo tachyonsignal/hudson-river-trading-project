@@ -126,11 +126,11 @@ void Parser::onUDPPacket(const char *buf, size_t len)
     }
 }
 
-char Parser::mapAscii(char c) {
-  return c == 0x20 ? 0x00: c;
+char Parser::replaceAsciiSpace(char c) {
+  return c == ' ' ? '\0': c;
 }
 
-unsigned long long Parser::getOrderRef(char *in, int offset) {
+unsigned long long Parser::getUint64(char *in, int offset) {
  unsigned long long orderRef = (
     (unsigned long long)(in[offset]) << 54 |
     (unsigned long long)(in[offset+1]) << 48 |
@@ -153,24 +153,23 @@ unsigned int Parser::getUint32(char *in, int offset) {
 char* Parser::mapAdd(char *in) {
   char* out = new char[44];
   // Msg type. Offset 0, length 2.
-  out[0] = 0x00;
-  out[1] = 0x01;
+  out[0] = 0x00, out[1] = 0x01;
   // Msg size. Offset 2, length 2.
-  out[2] = 0x00;
-  out[3] = 0x2C;
+  out[2] = 0x00, out[3] = 0x2C;
   // Stock Ticker. Offset 4, length 8.
-  // Replace alphanumeric ASCII space with null.
+  char* ticker = new char[8];
   for(int i = 0; i < 8; i++) {
-    out[4+i] = mapAscii(in[22 - 1 + i]);
+    char c = replaceAsciiSpace(in[22 - 1 + i]);
+    out[4+i] = c;
+    ticker[i] = c;
   }
   // Timestamp. Offset 12, length 8.
   // Order reference number. Offset 20, length 8.
-  unsigned long long orderRef = getOrderRef(in, 9-1);
+  unsigned long long orderRef = getUint64(in, 9-1);
   char* orderRefLittleEndianBytes = reinterpret_cast<char*>(&orderRef);
   for(int i = 0 ; i < 8; i++) {
     out[20+i] = orderRefLittleEndianBytes[i];
   }
-
   // Side. Offset 28, length 1.
   out[28] = in[17 - 1];
   // Padding. Offset 29, length 3.
@@ -199,14 +198,7 @@ char* Parser::mapAdd(char *in) {
   delete[] s;
 
   Order_t o = {
-    mapAscii(in[22 - 1]),
-    mapAscii(in[23 - 1]),
-    mapAscii(in[24 - 1]),
-    mapAscii(in[25 - 1]),
-    mapAscii(in[26 - 1]),
-    mapAscii(in[27 - 1]),
-    mapAscii(in[28 - 1]),
-    mapAscii(in[29 - 1]),
+    ticker,
     priceDouble, 
     sizeInt
   };
@@ -218,14 +210,12 @@ char* Parser::mapAdd(char *in) {
 char* Parser::mapExecuted(char *in) {
   char* out = new char[40];
   // Msg type. Offset 0, length 2.
-  out[0] = 0x00;
-  out[1] = 0x02;
+  out[0] = 0x00, out[1] = 0x02;
   // Msg size. Offset 2, length 2.
-  out[2] = 0x00;
-  out[3] = 0x28;
+  out[2] = 0x00, out[3] = 0x28;
 
   // Lookup add order using order ref.
-  unsigned long long orderRef = getOrderRef(in, 9-1);
+  unsigned long long orderRef = getUint64(in, 9-1);
   auto order  = orders.find(orderRef);
   if(order == orders.end()) {
     // TODO: Throw with order ref #.
@@ -233,14 +223,9 @@ char* Parser::mapExecuted(char *in) {
   }
   Order_t o = order->second;
   // Stock ticker. Offset 4, length 8.
-  out[4] = o.a;
-  out[5] = o.b;
-  out[6] = o.c;
-  out[7] = o.d;
-  out[8] = o.e;
-  out[9] = o.f;
-  out[10] = o.g;
-  out[11] = o.h;
+  for(int i = 0 ; i < 8; i++) {
+    out[4 + i] = o.ticker[i];
+  }
 
   // TODO: timestamp. offset 12, length 8. map.
   // Order reference number. Offset 20, length 8.
@@ -268,28 +253,21 @@ char* Parser::mapExecuted(char *in) {
 char* Parser::mapReduced(char* in) {
   char* out = new char[32];
   // Msg type. Offset 0, length 2.
-  out[0] = 0x00;
-  out[1] = 0x03;
+  out[0] = 0x00, out[1] = 0x03;
     // Msg size. Offset 2, length 2.
-  out[2] = 0x00;
-  out[3] = 0x20;
+  out[2] = 0x00, out[3] = 0x20;
 
   // Lookup add order using order ref.
-  unsigned long long orderRef = getOrderRef(in, 9-1);
+  unsigned long long orderRef = getUint64(in, 9-1);
   auto order  = orders.find(orderRef);
   if(order == orders.end()) {
     // TODO: Throw with order ref #.
     throw std::runtime_error("Order ref was not found.");
   }
   Order_t o = order->second;
-  out[4] = o.a;
-  out[5] = o.b;
-  out[6] = o.c;
-  out[7] = o.d;
-  out[8] = o.e;
-  out[9] = o.f;
-  out[10] = o.g;
-  out[11] = o.h;
+  for(int i = 0 ; i < 8; i++) {
+    out[4+i] = o.ticker[i];
+  }
 
   // Timestamp, offset 12, length 8.
   // TODO: map from *in.
@@ -321,7 +299,7 @@ char* Parser::mapReplaced(char *in) {
   out[3] = 0x30;
   
   // Lookup add order using order ref.
-  unsigned long long orderRef = getOrderRef(in, 9-1);
+  unsigned long long orderRef = getUint64(in, 9-1);
   auto order  = orders.find(orderRef);
   if(order == orders.end()) {
     // TODO: Throw with order ref #.
@@ -329,14 +307,10 @@ char* Parser::mapReplaced(char *in) {
   }
   Order_t o = order->second;
   // Stock ticker. Offset 4, length 8.
-  out[4] = o.a;
-  out[5] = o.b;
-  out[6] = o.c;
-  out[7] = o.d;
-  out[8] = o.e;
-  out[9] = o.f;
-  out[10] = o.g;
-  out[11] = o.h;
+  for(int i = 0 ; i < 8; i++) {
+    out[4+i] = o.ticker[i];
+  }
+
   // TODO: timestamp. offset 12, length 8, map timestamp from *in.
   // Older order reference number. offset 20, length 8.
   char* orderRefLittleEndianBytes = reinterpret_cast<char*>(&orderRef);
