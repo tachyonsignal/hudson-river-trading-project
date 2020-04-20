@@ -14,6 +14,7 @@ class Parser {
   int sequencePosition;
   // The file to write to.
   std::string filename;
+  unsigned long long epochToMidnightLocalNanos;
 
   // Payload bytes that have been received but not yet processed.
   std::queue<char> q;

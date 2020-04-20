@@ -11,16 +11,34 @@
 #include <sys/uio.h>
 #include <stdexcept>
 #include <fstream>
+#include <time.h>       /* time_t, struct tm, time, mktime */
 
 Parser::Parser(int date, const std::string &outputFilename)
 {
-    sequencePosition = 1;
-    filename = outputFilename;
+  filename = outputFilename;
+  
+  // "The first packet processed by your parser should be
+  // the packet with sequence number 1."
+  sequencePosition = 1;
 
-    // Empty the file.
-    std::ofstream outfile;
-    outfile.open(outputFilename);
-    outfile.close();
+  int year = date / 10000;
+  int month = date % 10000 / 100;
+  int day = date % 100;
+
+  // Copied from http://www.cplusplus.com/reference/ctime/mktime/.
+  time_t rawtime;
+  struct tm * timeinfo = localtime ( &rawtime );
+  timeinfo->tm_year = year - 1900;
+  timeinfo->tm_mon = month - 1;
+  timeinfo->tm_mday = day;
+  time_t t = mktime (timeinfo);
+  unsigned int seconds = t;
+  epochToMidnightLocalNanos = seconds * 1E9;
+
+  // Empty the file.
+  std::ofstream outfile;
+  outfile.open(outputFilename);
+  outfile.close();
 }
 
 void Parser::onUDPPacket(const char *buf, size_t len)
@@ -67,7 +85,7 @@ void Parser::onUDPPacket(const char *buf, size_t len)
        std::ofstream outfile;
        outfile.open(filename, std::ios_base::app); // append instead of overwrite
            
-       // There's atleast 1 message that is processable.
+       // There's atleast 1 complete message in the queue.
        while(q.size() >= 34 ||
             (q.size() >= 33 && q.front() != 'A') ||
             (q.size() >= 21 && (q.front() == 'X' || q.front() == 'R'))) {
@@ -141,7 +159,13 @@ char* Parser::mapAdd(char *in) {
     ticker[i] = c;
   }
 
-  // Timestamp. Offset 12, length 8.
+  // Timestamp, offset 12, length 8.
+  unsigned long long timestamp = getUint64(in, 1);
+  unsigned long long nanosSinceEpoch = epochToMidnightLocalNanos + timestamp; 
+  char* timeBytes = reinterpret_cast<char*>(&nanosSinceEpoch);
+  for(int i = 0 ; i < 8; i++) {
+    out[12+i] = timeBytes[i];
+  }
 
   // Order reference number. Offset 20, length 8.
   unsigned long long orderRef = getUint64(in, 9);
@@ -206,11 +230,17 @@ char* Parser::mapExecuted(char *in) {
     out[4 + i] = o.ticker[i];
   }
 
-  // TODO: timestamp. offset 12, length 8. map.
+  unsigned long long timestamp = getUint64(in, 1);
+  unsigned long long nanosSinceEpoch = epochToMidnightLocalNanos + timestamp; 
+  char* timeBytes = reinterpret_cast<char*>(&nanosSinceEpoch);
+  for(int i = 0 ; i < 8; i++) {
+    out[12+i] = timeBytes[i];
+  }
 
   // Order reference number. Offset 20, length 8.
   char* orderRefLittleEndianBytes = reinterpret_cast<char*>(&orderRef);
-  for(int i = 0 ; i < 8; i++) {
+  for(int i = 0 ; i < 8; i++
+  ) {
     out[20 + i] = orderRefLittleEndianBytes[0];
   }
 
@@ -245,7 +275,12 @@ char* Parser::mapReduced(char* in) {
   }
 
   // Timestamp, offset 12, length 8.
-  // TODO: map from *in.
+  unsigned long long timestamp = getUint64(in, 1);
+  unsigned long long nanosSinceEpoch = epochToMidnightLocalNanos + timestamp; 
+  char* timeBytes = reinterpret_cast<char*>(&nanosSinceEpoch);
+  for(int i = 0 ; i < 8; i++) {
+    out[12+i] = timeBytes[i];
+  }
 
   // Order ref number. Offset 20, length 8.
   char* orderRefLittleEndianBytes = reinterpret_cast<char*>(&orderRef);
@@ -278,8 +313,14 @@ char* Parser::mapReplaced(char *in) {
   for(int i = 0 ; i < 8; i++) {
     out[4+i] = o.ticker[i];
   }
+  
+  unsigned long long timestamp = getUint64(in, 1);
+  unsigned long long nanosSinceEpoch = epochToMidnightLocalNanos + timestamp; 
+  char* timeBytes = reinterpret_cast<char*>(&nanosSinceEpoch);
+  for(int i = 0 ; i < 8; i++) {
+    out[12+i] = timeBytes[i];
+  }
 
-  // TODO: timestamp. offset 12, length 8, map timestamp from *in.
   // Older order reference number. offset 20, length 8.
   char* orderRefLittleEndianBytes = reinterpret_cast<char*>(&orderRef);
   for(int i = 0 ; i < 8; i++) {
