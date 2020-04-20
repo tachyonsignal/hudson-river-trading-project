@@ -316,14 +316,12 @@ char* Parser::mapReplaced(char *in) {
   }
 
   // New order reference number. offset 28, length 8.
-  out[28] = in[24];
-  out[29] = in[23];
-  out[30] = in[22];
-  out[31] = in[21];
-  out[32] = in[20];
-  out[33] = in[19];
-  out[34] = in[18];
-  out[35] = in[17];
+  unsigned long long newOrderRef = getUint64(in, 17);
+  char* newOrderRefBytes = reinterpret_cast<char*>(&newOrderRef);
+  for(int i = 0 ; i < 8; i++) {
+    out[28] = newOrderRefBytes[i];
+  }
+
   // New size. Offset 36, length 4.
   unsigned int sizeInt = getUint32(in, 25);
   char* sizeBytes = reinterpret_cast<char*>(&sizeInt);
