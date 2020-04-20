@@ -30,10 +30,10 @@ class Parser {
   Order_t lookupOrder(unsigned long long orderRef);
 
   // Functions that map from input to output message.
-  char* mapAdd(char* in);
-  char* mapExecuted(char* in);
-  char* mapReduced(char* in);
-  char* mapReplaced(char* in);
+  char* mapAdd(const char* in);
+  char* mapExecuted(const char* in);
+  char* mapReduced(const char* in);
+  char* mapReplaced(const char* in);
 
   // Utilities to interpret bytes starting at given offset.
   unsigned long long getUint64(const char *in, int offset);

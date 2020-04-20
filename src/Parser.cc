@@ -42,9 +42,7 @@ void Parser::onUDPPacket(const char *buf, size_t len) {
   printf("Packet sequence number %zu.\n", sequenceNumber);
 
   if(sequenceNumber == sequencePosition) {
-    int payloadLength = static_cast<int>(len) - 6;
-    printf("Payload length %zu\n", payloadLength);
-
+    printf("Payload length %zu\n", static_cast<int>(len) - 6);
     // Queue payload bytes of current packet.
     for( int i = 6; i < static_cast<int>(len); i++) {
       q.push(buf[i]);
@@ -52,17 +50,17 @@ void Parser::onUDPPacket(const char *buf, size_t len) {
     sequencePosition++;
 
     // Queue payload bytes of previously skipped packets that
-    // continue the sequence.
-    auto payload = m.find(sequencePosition);
-    while(payload != m.end()) {
-      const char* payloadBytes = payload->second;
-      int prevPacketSize  = (uint16_t)((payloadBytes[0] << 8) | payloadBytes[1]);
-      for( int i = 6; i < prevPacketSize; i++) {
-        q.push(payloadBytes[i]);
+    // succeed the sequence.
+    auto entry = m.find(sequencePosition);
+    while(entry != m.end()) {
+      const char* skippedPacketBytes = entry->second;
+      int skippedPacketSize = getUint16(skippedPacketBytes, 0);
+      for( int i = 6; i < skippedPacketSize; i++) {
+        q.push(skippedPacketBytes[i]);
       }
 
       sequencePosition++;
-      payload = m.find(sequencePosition);
+      entry = m.find(sequencePosition);
     }
 
     std::ofstream outfile;
@@ -131,7 +129,7 @@ uint16_t Parser::getUint16(const char *buf, int offset) {
     (uint16_t)(buf[offset+1]));
 }
 
-char* Parser::mapAdd(char *in) {
+char* Parser::mapAdd(const char *in) {
   char* out = new char[44];
   // Msg type. Offset 0, length 2.
   out[0] = 0x00, out[1] = 0x01;
@@ -203,7 +201,7 @@ Order_t Parser::lookupOrder(unsigned long long orderRef) {
   return order->second;
 }
 
-char* Parser::mapExecuted(char *in) {
+char* Parser::mapExecuted(const char *in) {
   char* out = new char[40];
   // Msg type. Offset 0, length 2.
   out[0] = 0x00, out[1] = 0x02;
@@ -248,7 +246,7 @@ char* Parser::mapExecuted(char *in) {
   return out;
 }
 
-char* Parser::mapReduced(char* in) {
+char* Parser::mapReduced(const char* in) {
   char* out = new char[32];
   // Msg type. Offset 0, length 2.
   out[0] = 0x00, out[1] = 0x03;
@@ -287,7 +285,7 @@ char* Parser::mapReduced(char* in) {
   return out;
 }
 
-char* Parser::mapReplaced(char *in) {
+char* Parser::mapReplaced(const char *in) {
   char* out = new char[48];
   // Msg type. Offset 0, length 2.
   out[0] = 0x00, out[1] = 0x04;
@@ -339,6 +337,7 @@ char* Parser::mapReplaced(char *in) {
 
   return out;
 }
+
 
 char* Parser::popNBytes(int n) {
   char* out = new char[n];
