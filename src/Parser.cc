@@ -33,12 +33,10 @@ void Parser::onUDPPacket(const char *buf, size_t len) {
       throw std::runtime_error("Packet must be atleast 4 bytes");
   }
 
-    uint16_t packetSize = 0;
-    packetSize = (uint16_t)((buf[0] << 8) | buf[1]);
-    printf("Packet size %zu\n", packetSize);
-    if(static_cast<int>(packetSize) != static_cast<int>(len)) {
-       throw std::runtime_error("Packet size does match buffer length");
-    }
+  uint16_t packetSize = getUint16(buf, 0);
+  if(static_cast<int>(packetSize) != static_cast<int>(len)) {
+      throw std::runtime_error("Packet size does match buffer length.");
+  }
     unsigned int sequenceNumber = getUint32(buf, 2);
     printf("Sequence number %zu\n", sequenceNumber);
 
@@ -125,6 +123,12 @@ unsigned int Parser::getUint32(const char *in, int offset) {
     (unsigned int)(in[offset+1]) << 16 |
     (unsigned int)(in[offset+2]) << 8 |
     (unsigned int)(in[offset+3]));
+}
+
+uint16_t Parser::getUint16(const char *buf, int offset) {
+  return (
+    (uint16_t)(buf[offset]) << 8 |
+    (uint16_t)(buf[offset+1]));
 }
 
 char* Parser::mapAdd(char *in) {

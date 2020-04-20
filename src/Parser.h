@@ -38,6 +38,7 @@ class Parser {
   // Utilities to interpret bytes starting at given offset.
   unsigned long long getUint64(const char *in, int offset);
   unsigned int getUint32(const char *in, int offset);
+  uint16_t getUint16(const char *buf, int offset);
 
   public:
     // date - the day on which the data being parsed was generated.
