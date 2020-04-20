@@ -1,20 +1,8 @@
 #include "Parser.h"
 
-#include <string>
-#include <cstdio>
-#include <cstdint>
-#include <fcntl.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/uio.h>
-#include <stdexcept>
 #include <fstream>
-#include <time.h>       /* time_t, struct tm, time, mktime */
 
-Parser::Parser(int date, const std::string &outputFilename)
-{
+Parser::Parser(int date, const std::string &outputFilename) {
   filename = outputFilename;
   
   // "The first packet processed by your parser should be
@@ -24,16 +12,14 @@ Parser::Parser(int date, const std::string &outputFilename)
   int year = date / 10000;
   int month = date % 10000 / 100;
   int day = date % 100;
-
   // Copied from http://www.cplusplus.com/reference/ctime/mktime/.
   time_t rawtime;
   struct tm * timeinfo = localtime ( &rawtime );
-  timeinfo->tm_year = year - 1900;
-  timeinfo->tm_mon = month - 1;
+  timeinfo->tm_year = ( date / 1E4) - 1900; // Years since 1900.
+  timeinfo->tm_mon = month - 1; // Months are 0-indexed.
   timeinfo->tm_mday = day;
-  time_t t = mktime (timeinfo);
-  unsigned int seconds = t;
-  epochToMidnightLocalNanos = seconds * 1E9;
+  unsigned int epochToMidnightLocalSeconds = mktime (timeinfo);
+  epochToMidnightLocalNanos = 1E9 * epochToMidnightLocalSeconds;
 
   // Empty the file.
   std::ofstream outfile;
@@ -41,12 +27,11 @@ Parser::Parser(int date, const std::string &outputFilename)
   outfile.close();
 }
 
-void Parser::onUDPPacket(const char *buf, size_t len)
-{
-    printf("Received packet of size %zu\n", len);
-    if(static_cast<int>(len) < 4) {
-       throw std::runtime_error("Packet must be atleast 4 bytes");
-    }
+void Parser::onUDPPacket(const char *buf, size_t len) {
+  printf("Received packet of size %zu\n", len);
+  if(static_cast<int>(len) < 4) {
+      throw std::runtime_error("Packet must be atleast 4 bytes");
+  }
 
     uint16_t packetSize = 0;
     packetSize = (uint16_t)((buf[0] << 8) | buf[1]);
@@ -313,7 +298,7 @@ char* Parser::mapReplaced(char *in) {
   for(int i = 0 ; i < 8; i++) {
     out[4+i] = o.ticker[i];
   }
-  
+
   unsigned long long timestamp = getUint64(in, 1);
   unsigned long long nanosSinceEpoch = epochToMidnightLocalNanos + timestamp; 
   char* timeBytes = reinterpret_cast<char*>(&nanosSinceEpoch);
