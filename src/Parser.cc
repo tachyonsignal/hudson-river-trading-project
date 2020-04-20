@@ -37,76 +37,77 @@ void Parser::onUDPPacket(const char *buf, size_t len) {
   if(static_cast<int>(packetSize) != static_cast<int>(len)) {
       throw std::runtime_error("Packet size does match buffer length.");
   }
-    unsigned int sequenceNumber = getUint32(buf, 2);
-    printf("Sequence number %zu\n", sequenceNumber);
+  
+  unsigned int sequenceNumber = getUint32(buf, 2);
+  printf("Packet sequence number %zu.\n", sequenceNumber);
 
+  if(sequenceNumber == sequencePosition) {
     int payloadLength = static_cast<int>(len) - 6;
     printf("Payload length %zu\n", payloadLength);
 
-    if(sequenceNumber == sequencePosition) {
-      // Queue payload bytes of current payload.
-      for( int i = 6; i < static_cast<int>(len); i++) {
-        q.push(buf[i]);
-      }
-      sequencePosition++;
-
-       // Queue payload bytes of previously skipped packets for packets
-       // continuing the sequence.
-       auto payload = m.find(sequencePosition);
-       while(payload != m.end()) {
-          const char* payloadBytes = payload->second;
-          int prevPacketSize  = (uint16_t)((payloadBytes[0] << 8) | payloadBytes[1]);
-          for( int i = 6; i < prevPacketSize; i++) {
-            q.push(payloadBytes[i]);
-          }
-
-          sequencePosition++;
-          payload = m.find(sequencePosition);
-       }
-
-       std::ofstream outfile;
-       outfile.open(filename, std::ios_base::app); // append instead of overwrite
-           
-       // There's atleast 1 complete message in the queue.
-       while(q.size() >= 34 ||
-            (q.size() >= 33 && q.front() != 'A') ||
-            (q.size() >= 21 && (q.front() == 'X' || q.front() == 'R'))) {
-         char msgType = q.front();
-         if(msgType == 'A') {
-           char* in = popNBytes(34);
-           char* out = mapAdd(in);
-           outfile.write(out, 44);
-           delete[] in, delete[] out;
-         } else if(msgType == 'E') {
-           char* in = popNBytes(21);
-           char* out = mapExecuted(in);
-           outfile.write(out, 40);
-           delete[] in, delete[] out;
-         } else if(msgType == 'X') {
-           char* in = popNBytes(21);
-           char* out = mapReduced(in);
-           outfile.write(out, 32);
-           delete[] in, delete[] out;
-         } else if(msgType == 'R') {
-           char* in = popNBytes(33);
-           char* out = mapReplaced(in);
-           outfile.write(out, 48);
-           delete[] in, delete[] out;
-         } else {
-           throw std::runtime_error("Unexpected message type");
-         }
-       }
-       outfile.close();
-    } else if (sequenceNumber < sequencePosition) {
-      // Duplicate packet that has already proccessed, ignore.
-    } else {
-      // Store for when the gap in packet sequence is closed.
-      m[sequenceNumber] = buf;
+    // Queue payload bytes of current packet.
+    for( int i = 6; i < static_cast<int>(len); i++) {
+      q.push(buf[i]);
     }
+    sequencePosition++;
+
+    // Queue payload bytes of previously skipped packets that
+    // continue the sequence.
+    auto payload = m.find(sequencePosition);
+    while(payload != m.end()) {
+      const char* payloadBytes = payload->second;
+      int prevPacketSize  = (uint16_t)((payloadBytes[0] << 8) | payloadBytes[1]);
+      for( int i = 6; i < prevPacketSize; i++) {
+        q.push(payloadBytes[i]);
+      }
+
+      sequencePosition++;
+      payload = m.find(sequencePosition);
+    }
+
+    std::ofstream outfile;
+    outfile.open(filename, std::ios_base::app); // append instead of overwrite
+           
+    // There's atleast 1 complete message in the queue.
+    while(q.size() >= 34 ||
+        (q.size() >= 33 && q.front() != 'A') ||
+        (q.size() >= 21 && (q.front() == 'X' || q.front() == 'R'))) {
+      char msgType = q.front();
+      if(msgType == 'A') {
+        char* in = popNBytes(34);
+        char* out = mapAdd(in);
+        outfile.write(out, 44);
+        delete[] in, delete[] out;
+      } else if(msgType == 'E') {
+        char* in = popNBytes(21);
+        char* out = mapExecuted(in);
+        outfile.write(out, 40);
+        delete[] in, delete[] out;
+      } else if(msgType == 'X') {
+        char* in = popNBytes(21);
+        char* out = mapReduced(in);
+        outfile.write(out, 32);
+        delete[] in, delete[] out;
+      } else if(msgType == 'R') {
+        char* in = popNBytes(33);
+        char* out = mapReplaced(in);
+        outfile.write(out, 48);
+        delete[] in, delete[] out;
+      } else {
+        throw std::runtime_error("Unexpected message type");
+      }
+    }
+    outfile.close();
+  } else if (sequenceNumber < sequencePosition) {
+    // Duplicate packet that has already proccessed, ignore.
+  } else {
+    // Store for when the gap in packet sequence is closed.
+    m[sequenceNumber] = buf;
+  }
 }
 
 unsigned long long Parser::getUint64(const char *in, int offset) {
- unsigned long long orderRef = (
+ return (
     (unsigned long long)(in[offset]) << 54 |
     (unsigned long long)(in[offset+1]) << 48 |
     (unsigned long long)(in[offset+2]) << 40 |
@@ -115,7 +116,6 @@ unsigned long long Parser::getUint64(const char *in, int offset) {
     (unsigned long long)(in[offset+5]) << 16 |
     (unsigned long long)(in[offset+6]) << 8 |
     (unsigned long long)(in[offset+7]));
-  return orderRef;
 }
 unsigned int Parser::getUint32(const char *in, int offset) {
   return (
