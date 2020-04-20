@@ -64,11 +64,10 @@ void Parser::onUDPPacket(const char *buf, size_t len)
 
        // There's atleast 1 message that is processable.
        while(q.size() >= 34 ||
-            (q.size() >= 33 && q.front() != 0x41) ||
-            (q.size() >= 21 && q.front() == 0x58 && q.front() == 0x52))
+            (q.size() >= 33 && q.front() != 'A') ||
+            (q.size() >= 21 && (q.front() == 'X' || q.front() == 'R')))
         {
          char msgType = q.front();
-
          if(msgType == 'A') {
            char* in = popNBytes(34);
            char* out = mapAdd(in);
@@ -289,11 +288,9 @@ char* Parser::mapReduced(char* in) {
 char* Parser::mapReplaced(char *in) {
   char* out = new char[48];
   // Msg type. Offset 0, length 2.
-  out[0] = 0x00;
-  out[1] = 0x04;
+  out[0] = 0x00, out[1] = 0x04;
   // Msg size. Offset 2, length 2.
-  out[2] = 0x00;
-  out[3] = 0x30;
+  out[2] = 0x00, out[3] = 0x30;
   
   // Lookup add order using order ref.
   unsigned long long orderRef = getUint64(in, 9);
