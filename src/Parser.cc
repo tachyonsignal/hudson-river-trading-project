@@ -163,14 +163,16 @@ char* Parser::mapAdd(char *in) {
   out[11] = mapAscii(in[29 - 1]);
   // Timestamp. Offset 12, length 8.
   // Order reference number. Offset 20, length 8.
-  out[20] = in[16 - 1];
-  out[21] = in[15 - 1];
-  out[22] = in[14 - 1];
-  out[23] = in[13 - 1];
-  out[24] = in[12 - 1];
-  out[25] = in[11 - 1];
-  out[26] = in[10 - 1];
-  out[27] = in[9 - 1];
+  unsigned long long orderRef = getOrderRef(in, 9-1);
+  char* orderRefLittleEndianBytes = reinterpret_cast<char*>(&orderRef);
+  out[20] = orderRefLittleEndianBytes[0];
+  out[21] = orderRefLittleEndianBytes[1];
+  out[22] = orderRefLittleEndianBytes[2];
+  out[23] = orderRefLittleEndianBytes[3];
+  out[24] = orderRefLittleEndianBytes[4];
+  out[25] = orderRefLittleEndianBytes[5];
+  out[26] = orderRefLittleEndianBytes[6];
+  out[27] = orderRefLittleEndianBytes[7];
 
   // Side. Offset 28, length 1.
   out[28] = in[17 - 1];
@@ -204,7 +206,6 @@ char* Parser::mapAdd(char *in) {
   out[43] = priceBytes[7];
   delete[] s;
 
-  unsigned long long orderRef = getOrderRef(in, 20);
   Order_t o = {
     mapAscii(in[22 - 1]),
     mapAscii(in[23 - 1]),
@@ -231,7 +232,7 @@ char* Parser::mapExecuted(char *in) {
   out[3] = 0x28;
 
   // Lookup add order using order ref.
-  unsigned long long orderRef = getOrderRef(in, 20);
+  unsigned long long orderRef = getOrderRef(in, 9-1);
   auto order  = orders.find(orderRef);
   if(order == orders.end()) {
     // TODO: Throw with order ref #.
@@ -250,14 +251,16 @@ char* Parser::mapExecuted(char *in) {
 
   // TODO: timestamp. offset 12, length 8. map.
   // Order reference number. Offset 20, length 8.
-  out[20] = in[16-1];
-  out[21] = in[15-1];
-  out[22] = in[14-1];
-  out[23] = in[13-1];
-  out[24] = in[12-1];
-  out[25] = in[11-1];
-  out[26] = in[10-1];
-  out[27] = in[9-1];
+  char* orderRefLittleEndianBytes = reinterpret_cast<char*>(&orderRef);
+  out[20] = orderRefLittleEndianBytes[0];
+  out[21] = orderRefLittleEndianBytes[1];
+  out[22] = orderRefLittleEndianBytes[2];
+  out[23] = orderRefLittleEndianBytes[3];
+  out[24] = orderRefLittleEndianBytes[4];
+  out[25] = orderRefLittleEndianBytes[5];
+  out[26] = orderRefLittleEndianBytes[6];
+  out[27] = orderRefLittleEndianBytes[7];
+
   // Size. Offset 28, length 4.
   out[28] = in[20-1];
   out[29] = in[19-1];
@@ -288,7 +291,7 @@ char* Parser::mapReduced(char* in) {
   out[3] = 0x20;
 
   // Lookup add order using order ref.
-  unsigned long long orderRef = getOrderRef(in, 20);
+  unsigned long long orderRef = getOrderRef(in, 9-1);
   auto order  = orders.find(orderRef);
   if(order == orders.end()) {
     // TODO: Throw with order ref #.
@@ -308,14 +311,16 @@ char* Parser::mapReduced(char* in) {
   // TODO: map from *in.
 
   // Order ref number. Offset 20, length 8.
-  out[20] = in[16-1];
-  out[21] = in[15-1];
-  out[22] = in[14-1];
-  out[23] = in[13-1];
-  out[24] = in[12-1];
-  out[25] = in[11-1];
-  out[26] = in[10-1];
-  out[27] = in[9-1];
+  char* orderRefLittleEndianBytes = reinterpret_cast<char*>(&orderRef);
+  out[20] = orderRefLittleEndianBytes[0];
+  out[21] = orderRefLittleEndianBytes[1];
+  out[22] = orderRefLittleEndianBytes[2];
+  out[23] = orderRefLittleEndianBytes[3];
+  out[24] = orderRefLittleEndianBytes[4];
+  out[25] = orderRefLittleEndianBytes[5];
+  out[26] = orderRefLittleEndianBytes[6];
+  out[27] = orderRefLittleEndianBytes[7];
+
   // Size remaining. Offset 28, length 4.
   // TODO: do substraction from ord er ref - *in.
   // TODO: watchout for endianness.
@@ -335,7 +340,7 @@ char* Parser::mapReplaced(char *in) {
   out[3] = 0x30;
   
   // Lookup add order using order ref.
-  unsigned long long orderRef = getOrderRef(in, 20);
+  unsigned long long orderRef = getOrderRef(in, 9-1);
   auto order  = orders.find(orderRef);
   if(order == orders.end()) {
     // TODO: Throw with order ref #.
@@ -353,14 +358,15 @@ char* Parser::mapReplaced(char *in) {
   out[11] = o.h;
   // TODO: timestamp. offset 12, length 8, map timestamp from *in.
   // Older order reference number. offset 20, length 8.
-  out[20] = in[16-1];
-  out[21] = in[15-1];
-  out[22] = in[14-1];
-  out[23] = in[13-1];
-  out[24] = in[12-1];
-  out[25] = in[11-1];
-  out[26] = in[10-1];
-  out[27] = in[9-1];
+  char* orderRefLittleEndianBytes = reinterpret_cast<char*>(&orderRef);
+  out[20] = orderRefLittleEndianBytes[0];
+  out[21] = orderRefLittleEndianBytes[1];
+  out[22] = orderRefLittleEndianBytes[2];
+  out[23] = orderRefLittleEndianBytes[3];
+  out[24] = orderRefLittleEndianBytes[4];
+  out[25] = orderRefLittleEndianBytes[5];
+  out[26] = orderRefLittleEndianBytes[6];
+  out[27] = orderRefLittleEndianBytes[7];
   // New order reference number. offset 28, length 8.
   out[28] = in[24-1];
   out[29] = in[23-1];
