@@ -68,10 +68,9 @@ void Parser::onUDPPacket(const char *buf, size_t len)
             (q.size() >= 21 && q.front() == 0x58 && q.front() == 0x52))
         {
          char msgType = q.front();
-         q.pop();
 
          if(msgType == 'A') {
-           char* in = popNBytes(34 - 1);
+           char* in = popNBytes(34);
            char* out = mapAdd(in);
            // TODO: delete[] vs delete.
            delete in;
@@ -83,7 +82,7 @@ void Parser::onUDPPacket(const char *buf, size_t len)
 
            delete out;
          } else if(msgType == 'E') {
-           char* in = popNBytes(21 - 1);
+           char* in = popNBytes(21);
            char* out = mapExecuted(in);
            delete in;
            std::ofstream outfile;
@@ -92,7 +91,7 @@ void Parser::onUDPPacket(const char *buf, size_t len)
            outfile.close();
            delete out;
          } else if(msgType == 'X') {
-           char* in = popNBytes(21 - 1);
+           char* in = popNBytes(21);
            char* out = mapReduced(in);
            delete in;
            std::ofstream outfile;
@@ -101,7 +100,7 @@ void Parser::onUDPPacket(const char *buf, size_t len)
            outfile.close();
            delete out;
          } else if(msgType == 'R') {
-           char* in = popNBytes(33 - 1);
+           char* in = popNBytes(33);
            char* out = mapReplaced(in);
            delete in;
            std::ofstream outfile;
@@ -155,7 +154,7 @@ char* Parser::mapAdd(char *in) {
   // Stock Ticker. Offset 4, length 8.
   char* ticker = new char[8];
   for(int i = 0; i < 8; i++) {
-    char c = in[22 - 1 + i];
+    char c = in[22 + i];
     // Replace space with null.
     c == ' ' ? '\0': c;
     out[4+i] = c;
@@ -165,14 +164,14 @@ char* Parser::mapAdd(char *in) {
   // Timestamp. Offset 12, length 8.
 
   // Order reference number. Offset 20, length 8.
-  unsigned long long orderRef = getUint64(in, 9-1);
+  unsigned long long orderRef = getUint64(in, 9);
   char* orderRefLittleEndianBytes = reinterpret_cast<char*>(&orderRef);
   for(int i = 0 ; i < 8; i++) {
     out[20+i] = orderRefLittleEndianBytes[i];
   }
 
   // Side. Offset 28, length 1.
-  out[28] = in[17 - 1];
+  out[28] = in[17];
 
   // Padding. Offset 29, length 3.
   for(int i = 29; i <= 31; i++) {
@@ -180,14 +179,14 @@ char* Parser::mapAdd(char *in) {
   }
 
   // Size. Offset 32, length 4.
-  unsigned int sizeInt = getUint32(in, 18-1);
+  unsigned int sizeInt = getUint32(in, 18);
   char* sizeBytes = reinterpret_cast<char*>(&sizeInt);
   for(int i = 0 ; i < 4; i++) {
     out[32 + i] = sizeBytes[i];
   }
 
   // Price. Offset 36, length 8.
-  int32_t priceInt = getUint32(in, 30 - 1);
+  int32_t priceInt = getUint32(in, 30);
   double priceDouble = double(priceInt);
   char* priceBytes = reinterpret_cast<char*>(&priceDouble);
   // On x86, the bytes of the double are already in little-endian order.
@@ -212,7 +211,7 @@ char* Parser::mapExecuted(char *in) {
   out[2] = 0x00, out[3] = 0x28;
 
   // Lookup add order using order ref.
-  unsigned long long orderRef = getUint64(in, 9-1);
+  unsigned long long orderRef = getUint64(in, 9);
   auto order  = orders.find(orderRef);
   if(order == orders.end()) {
     // TODO: Throw with order ref #.
@@ -233,7 +232,7 @@ char* Parser::mapExecuted(char *in) {
   }
 
   // Size. Offset 28, length 4.
-  unsigned int sizeInt = getUint32(in, 17-1);
+  unsigned int sizeInt = getUint32(in, 17);
   char* sizeBytes = reinterpret_cast<char*>(&sizeInt);
   for(int i = 0 ; i < 4; i++) {
     out[28 + i] = sizeBytes[i];
@@ -256,7 +255,7 @@ char* Parser::mapReduced(char* in) {
   out[2] = 0x00, out[3] = 0x20;
 
   // Lookup add order using order ref.
-  unsigned long long orderRef = getUint64(in, 9-1);
+  unsigned long long orderRef = getUint64(in, 9);
   auto order  = orders.find(orderRef);
   if(order == orders.end()) {
     // TODO: Throw with order ref #.
@@ -277,7 +276,7 @@ char* Parser::mapReduced(char* in) {
   }
   
   // Size remaining. Offset 28, length 4.
-  unsigned int sizeInt = getUint32(in, 18-1);
+  unsigned int sizeInt = getUint32(in, 18);
   unsigned int remainingSize = o.size - sizeInt;
   o.size = remainingSize;
   char* sizeBytes = reinterpret_cast<char*>(&remainingSize);
@@ -297,7 +296,7 @@ char* Parser::mapReplaced(char *in) {
   out[3] = 0x30;
   
   // Lookup add order using order ref.
-  unsigned long long orderRef = getUint64(in, 9-1);
+  unsigned long long orderRef = getUint64(in, 9);
   auto order  = orders.find(orderRef);
   if(order == orders.end()) {
     // TODO: Throw with order ref #.
@@ -317,22 +316,22 @@ char* Parser::mapReplaced(char *in) {
   }
 
   // New order reference number. offset 28, length 8.
-  out[28] = in[24-1];
-  out[29] = in[23-1];
-  out[30] = in[22-1];
-  out[31] = in[21-1];
-  out[32] = in[20-1];
-  out[33] = in[19-1];
-  out[34] = in[18-1];
-  out[35] = in[17-1];
+  out[28] = in[24];
+  out[29] = in[23];
+  out[30] = in[22];
+  out[31] = in[21];
+  out[32] = in[20];
+  out[33] = in[19];
+  out[34] = in[18];
+  out[35] = in[17];
   // New size. Offset 36, length 4.
-  unsigned int sizeInt = getUint32(in, 25-1);
+  unsigned int sizeInt = getUint32(in, 25);
   char* sizeBytes = reinterpret_cast<char*>(&sizeInt);
   for(int i = 0 ; i < 4; i++) {
     out[36 + i] = sizeBytes[i];
   }
 
-  int32_t priceInt = getUint32(in, 29-1);
+  int32_t priceInt = getUint32(in, 29);
   double priceDouble = double(priceInt);
   char* priceBytes = reinterpret_cast<char*>(&priceDouble);
   // On x86, the bytes of the double are in little-endian order.
