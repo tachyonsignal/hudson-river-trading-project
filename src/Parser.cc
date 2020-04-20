@@ -44,20 +44,22 @@ void Parser::onUDPPacket(const char *buf, size_t len)
     printf("Payload length %zu\n", payloadLength);
 
     if(sequenceNumber == sequencePosition) {
-       // Queue payload bytes of current payload.
-       for( int i = 6; i < static_cast<int>(len); i++) {
-           q.push(buf[i]);
-       }
-       sequencePosition++;
+      // Queue payload bytes of current payload.
+      for( int i = 6; i < static_cast<int>(len); i++) {
+        q.push(buf[i]);
+      }
+      sequencePosition++;
 
-       // Queue payload bytes of previously skipped payloads.
+       // Queue payload bytes of previously skipped packets for packets
+       // continuing the sequence.
        auto payload = m.find(sequencePosition);
        while(payload != m.end()) {
-          const char* forwardBuf = payload->second;
-          uint16_t prevPacketSize  = (uint16_t)((forwardBuf[0] << 8) | forwardBuf[1]);
-          for( int i = 6; i < static_cast<int>(prevPacketSize); i++) {
-            q.push(forwardBuf[i]);
+          const char* payloadBytes = payload->second;
+          int prevPacketSize  = (uint16_t)((payloadBytes[0] << 8) | payloadBytes[1]);
+          for( int i = 6; i < prevPacketSize; i++) {
+            q.push(payloadBytes[i]);
           }
+
           sequencePosition++;
           payload = m.find(sequencePosition);
        }
@@ -73,9 +75,8 @@ void Parser::onUDPPacket(const char *buf, size_t len)
          if(msgType == 'A') {
            char* in = popNBytes(34);
            char* out = mapAdd(in);
-           delete[] in;
            outfile.write(out, 44);
-           delete[] out;
+           delete[] in, delete[] out;
          } else if(msgType == 'E') {
            char* in = popNBytes(21);
            char* out = mapExecuted(in);

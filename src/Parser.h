@@ -17,23 +17,26 @@ class Parser {
 
   // Payload bytes that have been received but not yet processed.
   std::queue<char> q;
-  // Stash packets that arrive "early" / out of sequence.
-  std::unordered_map<uint16_t, const char*> m;
-  std::unordered_map<unsigned long long, Order_t> orders;
+  // Utility to grab a chunk of bytes off the queue.
+  char* popNBytes(int n);
 
+  // Stash packets that arrive "early" / out of sequence, keyed by seq number.
+  std::unordered_map<uint16_t, const char*> m;
+
+  // Track Add Orders and their remaining order size.
+  std::unordered_map<unsigned long long, Order_t> orders;
+  // Utility to abstract away unordered_map boilerplate, lacking ::contains.
+  Order_t lookupOrder(unsigned long long orderRef);
+
+  // Functions that map from input to output message.
   char* mapAdd(char* in);
   char* mapExecuted(char* in);
   char* mapReduced(char* in);
   char* mapReplaced(char* in);
 
-  // Get the order dictionary key given the buffer, and offset to
-  // start looking for the key.
+  // Utilities to interpret bytes starting at given offset.
   unsigned long long getUint64(char *in, int offset);
   unsigned int getUint32(char *in, int offset);
-
-  Order_t lookupOrder(unsigned long long orderRef);
-
-  char* popNBytes(int n);
 
   public:
     // date - the day on which the data being parsed was generated.
