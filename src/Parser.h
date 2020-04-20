@@ -32,8 +32,7 @@ class Parser {
   unsigned long long getUint64(char *in, int offset);
   unsigned int getUint32(char *in, int offset);
 
-  // Map ASCII character, replacing space with null.
-  char replaceAsciiSpace(char c);
+  Order_t lookupOrder(unsigned long long orderRef);
 
   char* popNBytes(int n);
 

@@ -104,10 +104,6 @@ void Parser::onUDPPacket(const char *buf, size_t len)
     }
 }
 
-char Parser::replaceAsciiSpace(char c) {
-  return c == ' ' ? '\0': c;
-}
-
 unsigned long long Parser::getUint64(char *in, int offset) {
  unsigned long long orderRef = (
     (unsigned long long)(in[offset]) << 54 |
@@ -139,8 +135,7 @@ char* Parser::mapAdd(char *in) {
   char* ticker = new char[8];
   for(int i = 0; i < 8; i++) {
     char c = in[22 + i];
-    // Replace space with null.
-    c == ' ' ? '\0': c;
+    c == ' ' ? '\0': c; // Replace space with null.
     out[4+i] = c;
     ticker[i] = c;
   }
@@ -173,7 +168,6 @@ char* Parser::mapAdd(char *in) {
   int32_t priceInt = getUint32(in, 30);
   double priceDouble = double(priceInt);
   char* priceBytes = reinterpret_cast<char*>(&priceDouble);
-  // On x86, the bytes of the double are already in little-endian order.
   for(int i = 0 ; i < 8; i++) {
     out[36 + i] = priceBytes[i];
   }
@@ -187,6 +181,15 @@ char* Parser::mapAdd(char *in) {
   return out;
 }
 
+Order_t Parser::lookupOrder(unsigned long long orderRef) {
+  auto order  = orders.find(orderRef);
+  if(order == orders.end()) {
+    // TODO: Throw with order ref #.
+    throw std::runtime_error("Order ref was not found.");
+  }
+  return order->second;
+}
+
 char* Parser::mapExecuted(char *in) {
   char* out = new char[40];
   // Msg type. Offset 0, length 2.
@@ -196,12 +199,7 @@ char* Parser::mapExecuted(char *in) {
 
   // Lookup add order using order ref.
   unsigned long long orderRef = getUint64(in, 9);
-  auto order  = orders.find(orderRef);
-  if(order == orders.end()) {
-    // TODO: Throw with order ref #.
-    throw std::runtime_error("Order ref was not found.");
-  }
-  Order_t o = order->second;
+  Order_t o = lookupOrder(orderRef);
   // Stock ticker. Offset 4, length 8.
   for(int i = 0 ; i < 8; i++) {
     out[4 + i] = o.ticker[i];
@@ -223,8 +221,8 @@ char* Parser::mapExecuted(char *in) {
   }
 
   char* priceBytes = reinterpret_cast<char*>(&o.price);
-  // On x86, the bytes of the double are in little-endian order.
   for(int i = 0 ; i < 8; i++) {
+    // On x86, the bytes of the double are in little-endian order.
     out[32 + i] = priceBytes[i];
   }
 
@@ -240,12 +238,7 @@ char* Parser::mapReduced(char* in) {
 
   // Lookup add order using order ref.
   unsigned long long orderRef = getUint64(in, 9);
-  auto order  = orders.find(orderRef);
-  if(order == orders.end()) {
-    // TODO: Throw with order ref #.
-    throw std::runtime_error("Order ref was not found.");
-  }
-  Order_t o = order->second;
+  Order_t o = lookupOrder(orderRef);
   for(int i = 0 ; i < 8; i++) {
     out[4+i] = o.ticker[i];
   }
@@ -279,12 +272,7 @@ char* Parser::mapReplaced(char *in) {
   
   // Lookup add order using order ref.
   unsigned long long orderRef = getUint64(in, 9);
-  auto order  = orders.find(orderRef);
-  if(order == orders.end()) {
-    // TODO: Throw with order ref #.
-    throw std::runtime_error("Order ref was not found.");
-  }
-  Order_t o = order->second;
+  Order_t o = lookupOrder(orderRef);
   // Stock ticker. Offset 4, length 8.
   for(int i = 0 ; i < 8; i++) {
     out[4+i] = o.ticker[i];
