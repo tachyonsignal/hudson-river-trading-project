@@ -13,6 +13,7 @@
 #include <iostream>
 #include <fstream>
 #include <assert.h>     /* assert */
+#include <cmath>        // std::abs
 
 // https://stackoverflow.com/questions/2193544/how-to-print-additional-information-when-assert-fails
 #define ASSERT_EQUALS(left,right) { if(!((left) == (right))){ std::cerr << "ASSERT FAILED: " << #left << "==" << #right << " @ " << __FILE__ << " (" << __LINE__ << "). " << #left << "=" << (left) << "; " << #right << "=" << (right) << std::endl; } }
@@ -22,7 +23,7 @@ struct AddOrder {
   uint16_t msgSize;
   char ticker[8];
   uint64_t timestamp;
-  uint64_t order_ref;
+  uint64_t orderRef;
   char side;
   char padding[3];
   uint32_t size;
@@ -66,16 +67,26 @@ void test_basic() {
   fh.read((char*)&addOrder.msgSize, sizeof(addOrder.msgSize));
   fh.read((char*)&addOrder.ticker, sizeof(addOrder.ticker));
   fh.read((char*)&addOrder.timestamp, sizeof(addOrder.timestamp));
+  fh.read((char*)&addOrder.orderRef, sizeof(addOrder.orderRef));
+  fh.read((char*)&addOrder.side, sizeof(addOrder.side));
+  fh.read((char*)&addOrder.padding, sizeof(addOrder.padding));
+  fh.read((char*)&addOrder.size, sizeof(addOrder.size));
+  fh.read((char*)&addOrder.price, sizeof(addOrder.price));
+
   fh.close();
 
   ASSERT_EQUALS(addOrder.msgType[0], 0x00);
   ASSERT_EQUALS(addOrder.msgType[1], 0x01);
   ASSERT_EQUALS(addOrder.msgSize, 44);
-  ASSERT_EQUALS(addOrder.ticker[0], 'S');
-  ASSERT_EQUALS(addOrder.ticker[1], 'P');
-  ASSERT_EQUALS(addOrder.ticker[2], 'Y');
-  ASSERT_EQUALS(addOrder.ticker[3], '\0');
+  const char * expectedTicker = "SPY\0\0\0\0\0";
+  assert(std::equal(expectedTicker, expectedTicker+8, addOrder.ticker));
   ASSERT_EQUALS(addOrder.timestamp, 86401123456789L);
+  ASSERT_EQUALS(addOrder.orderRef, 1);
+  ASSERT_EQUALS(addOrder.side, 'B');
+  const char * expectedPadding = "\0\0\0";
+  assert(std::equal(expectedPadding, expectedPadding+3, addOrder.padding));
+  ASSERT_EQUALS(addOrder.size, 100);
+  ASSERT_EQUALS(addOrder.price, -128.0);
 
   close(fd);
 }
