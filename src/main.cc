@@ -13,7 +13,7 @@
 #include <iostream>
 #include <fstream>
 
-const char *inputFile = "test.in";
+const char *inputFile = "test_artifacts/test_add_execute.in";
 const char *outputFile = "output";
 
 int main(int argc, char **argv) {

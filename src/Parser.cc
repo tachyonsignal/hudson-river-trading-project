@@ -34,7 +34,6 @@ Parser::Parser(int date, const std::string &outputFilename) {
   timeinfo->tm_sec = 0;
   unsigned int epochToMidnightLocalSeconds = mktime (timeinfo);
   epochToMidnightLocalNanos = 1000000000 * (unsigned long long) epochToMidnightLocalSeconds;
-  printf("%llu", epochToMidnightLocalNanos);
   // Empty the file.
   std::ofstream outfile;
   outfile.open(outputFilename);
@@ -66,12 +65,17 @@ void Parser::enqueuePayloads(const char *buf, size_t len) {
 void Parser::processQueue() {
   std::ofstream outfile;
   outfile.open(filename, std::ios_base::app); // append instead of overwrite
+  
+  printf("processQueue\n");
+  printf("%d", q.size());
+  printf("%d", q.front());
 
   // There's atleast 1 complete message in the queue.
   while(q.size() >= 34 ||
       (q.size() >= 33 && q.front() != 'A') ||
-      (q.size() >= 21 && (q.front() == 'X' || q.front() == 'R'))) {
+      (q.size() >= 21 && (q.front() == 'X' || q.front() == 'E'))) {
     char msgType = q.front();
+    printf("msgType %X\n", msgType);
     if(msgType == 'A') {
       char* in = popNBytes(34);
       char* out = mapAdd(in);
@@ -126,15 +130,6 @@ void Parser::onUDPPacket(const char *buf, size_t len) {
 }
 
 uint64_t Parser::readBigEndianUint64(const char *in, int offset) {
- printf("%X\n", in[offset]);
- printf("%X\n", in[offset+1]);
- printf("%X\n", in[offset+2]);
- printf("%X\n", in[offset+3]);
- printf("%X\n", in[offset+4]);
- printf("%X\n", in[offset+5]);
-printf("%X\n", in[offset+6]);
-printf("%X\n", in[offset+7]);
-
  return (
     ((uint64_t)(uint8_t)in[offset] << 54) +
     ((uint64_t)(uint8_t)in[offset+1] << 48) +
@@ -160,6 +155,7 @@ uint16_t Parser::readBigEndianUint16(const char *buf, int offset) {
 }
 
 char* Parser::mapAdd(const char *in) {
+  printf("mapAdd\n");
   // Bytes associated with output message.
   char* out = new char[44];
 
@@ -183,13 +179,6 @@ char* Parser::mapAdd(const char *in) {
   // Timestamp field. 
   unsigned long long timestamp = readBigEndianUint64(in, 1);
   unsigned long long nanosSinceEpoch = epochToMidnightLocalNanos + timestamp; 
-  printf("\n\nTimestamp: %llu\n", timestamp);
-  printf("Mightnight local nanos: %llu\n", epochToMidnightLocalNanos);
-  printf("Nanos: %llu\n", nanosSinceEpoch);
-
-  // 18446744073702301973
-  // 86400000000000
-  // 86399992750357
 
   char* timeLittleEndianBytes = reinterpret_cast<char*>(&nanosSinceEpoch);
   for(int i = 0 ; i < 8; i++) {
@@ -245,6 +234,8 @@ Order_t Parser::lookupOrder(unsigned long long orderRef) {
 }
 
 char* Parser::mapExecuted(const char *in) {
+  printf("mapExecuted\n");
+
   char* out = new char[40];
   // Msg type. Offset 0, length 2.
   out[0] = 0x00, out[1] = 0x02;
@@ -268,9 +259,8 @@ char* Parser::mapExecuted(const char *in) {
 
   // Order reference number. Offset 20, length 8.
   char* orderRefLittleEndianBytes = reinterpret_cast<char*>(&orderRef);
-  for(int i = 0 ; i < 8; i++
-  ) {
-    out[20 + i] = orderRefLittleEndianBytes[0];
+  for(int i = 0 ; i < 8; i++) {
+    out[20 + i] = orderRefLittleEndianBytes[i];
   }
 
   // Size. Offset 28, length 4.
