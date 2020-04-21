@@ -22,7 +22,7 @@ class Parser {
   char* popNBytes(int n);
 
   // Stash packets that arrive "early" / out of sequence, keyed by seq number.
-  std::unordered_map<uint16_t, const char*> m;
+  std::unordered_map<uint16_t, const char*> packets;
 
   // Track Add Orders and their remaining order size.
   std::unordered_map<unsigned long long, Order_t> orders;
@@ -40,6 +40,11 @@ class Parser {
   unsigned int getUint32(const char *in, int offset);
   uint16_t getUint16(const char *buf, int offset);
 
+  // Sub-routines of #onUDPPacket.
+  // Enqueue payload bytes, catching up sequence of skipped packets.
+  void enqueuePayloads(const char *buf, size_t len);
+  void processQueue();
+  
   public:
     // date - the day on which the data being parsed was generated.
     // It is specified as an integer in the form yyyymmdd.

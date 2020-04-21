@@ -27,6 +27,64 @@ Parser::Parser(int date, const std::string &outputFilename) {
   outfile.close();
 }
 
+void Parser::enqueuePayloads(const char *buf, size_t len) {
+  // Payload of current packet can be queued for processing.
+  printf("Payload length %zu\n", static_cast<int>(len) - 6);
+  for( int i = 6; i < static_cast<int>(len); i++) {
+    q.push(buf[i]);
+  }
+  sequencePosition++;
+
+  // Payload bytes of previously skipped packets 
+  // succeed the sequence and can be queued.
+  auto entry = packets.find(sequencePosition);
+  while(entry != packets.end()) {
+    const char* skippedPacketBytes = entry->second;
+    int skippedPacketSize = getUint16(skippedPacketBytes, 0);
+    for( int i = 6; i < skippedPacketSize; i++) {
+      q.push(skippedPacketBytes[i]);
+    }
+    sequencePosition++;
+    entry = packets.find(sequencePosition);
+  }
+}
+
+void Parser::processQueue() {
+  std::ofstream outfile;
+  outfile.open(filename, std::ios_base::app); // append instead of overwrite
+
+  // There's atleast 1 complete message in the queue.
+  while(q.size() >= 34 ||
+      (q.size() >= 33 && q.front() != 'A') ||
+      (q.size() >= 21 && (q.front() == 'X' || q.front() == 'R'))) {
+    char msgType = q.front();
+    if(msgType == 'A') {
+      char* in = popNBytes(34);
+      char* out = mapAdd(in);
+      outfile.write(out, 44);
+      delete[] in, delete[] out;
+    } else if(msgType == 'E') {
+      char* in = popNBytes(21);
+      char* out = mapExecuted(in);
+      outfile.write(out, 40);
+      delete[] in, delete[] out;
+    } else if(msgType == 'X') {
+      char* in = popNBytes(21);
+      char* out = mapReduced(in);
+      outfile.write(out, 32);
+      delete[] in, delete[] out;
+    } else if(msgType == 'R') {
+      char* in = popNBytes(33);
+      char* out = mapReplaced(in);
+      outfile.write(out, 48);
+      delete[] in, delete[] out;
+    } else {
+      throw std::runtime_error("Unexpected message type");
+    }
+  }
+  outfile.close();
+}
+
 void Parser::onUDPPacket(const char *buf, size_t len) {
   printf("Received packet of size %zu\n", len);
   if(static_cast<int>(len) < 4) {
@@ -40,69 +98,19 @@ void Parser::onUDPPacket(const char *buf, size_t len) {
   
   unsigned int sequenceNumber = getUint32(buf, 2);
   printf("Packet sequence number %zu.\n", sequenceNumber);
-
-  if(sequenceNumber == sequencePosition) {
-    printf("Payload length %zu\n", static_cast<int>(len) - 6);
-    // Queue payload bytes of current packet.
-    for( int i = 6; i < static_cast<int>(len); i++) {
-      q.push(buf[i]);
-    }
-    sequencePosition++;
-
-    // Queue payload bytes of previously skipped packets that
-    // succeed the sequence.
-    auto entry = m.find(sequencePosition);
-    while(entry != m.end()) {
-      const char* skippedPacketBytes = entry->second;
-      int skippedPacketSize = getUint16(skippedPacketBytes, 0);
-      for( int i = 6; i < skippedPacketSize; i++) {
-        q.push(skippedPacketBytes[i]);
-      }
-
-      sequencePosition++;
-      entry = m.find(sequencePosition);
-    }
-
-    std::ofstream outfile;
-    outfile.open(filename, std::ios_base::app); // append instead of overwrite
-           
-    // There's atleast 1 complete message in the queue.
-    while(q.size() >= 34 ||
-        (q.size() >= 33 && q.front() != 'A') ||
-        (q.size() >= 21 && (q.front() == 'X' || q.front() == 'R'))) {
-      char msgType = q.front();
-      if(msgType == 'A') {
-        char* in = popNBytes(34);
-        char* out = mapAdd(in);
-        outfile.write(out, 44);
-        delete[] in, delete[] out;
-      } else if(msgType == 'E') {
-        char* in = popNBytes(21);
-        char* out = mapExecuted(in);
-        outfile.write(out, 40);
-        delete[] in, delete[] out;
-      } else if(msgType == 'X') {
-        char* in = popNBytes(21);
-        char* out = mapReduced(in);
-        outfile.write(out, 32);
-        delete[] in, delete[] out;
-      } else if(msgType == 'R') {
-        char* in = popNBytes(33);
-        char* out = mapReplaced(in);
-        outfile.write(out, 48);
-        delete[] in, delete[] out;
-      } else {
-        throw std::runtime_error("Unexpected message type");
-      }
-    }
-    outfile.close();
-  } else if (sequenceNumber < sequencePosition) {
-    // Duplicate packet that has already proccessed, ignore.
-  } else {
+  // Packet arrived "early".
+  if (sequenceNumber > sequencePosition) {
     // Store for when the gap in packet sequence is closed.
-    m[sequenceNumber] = buf;
+    packets[sequenceNumber] = buf;
+  } else if (sequenceNumber < sequencePosition) {
+    // Packet already arrived and processed.
+    return;
+  } else {
+    enqueuePayloads(buf, len);
+    processQueue();
   }
 }
+
 
 unsigned long long Parser::getUint64(const char *in, int offset) {
  return (
