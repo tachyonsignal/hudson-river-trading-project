@@ -1,6 +1,7 @@
 #include "Parser.h"
 
 #include <fstream>
+#include <iostream>
 
 Parser::Parser(int date, const std::string &outputFilename) {
   filename = outputFilename;
@@ -10,8 +11,18 @@ Parser::Parser(int date, const std::string &outputFilename) {
   sequencePosition = 1;
 
   int year = date / 10000;
+  if(year < 1970 || year > 2105) {
+    // 2105 is the last whole year where epoch seconds < 2^32.
+    throw std::invalid_argument("YYYY must be between 1970 and 2105.");
+  }
   int month = date % 10000 / 100;
+  if(month > 12 || month == 0) {
+    throw std::invalid_argument("MM must be between 1 and 12 inclusive.");
+  }
   int day = date % 100;
+  if(day > 31 || day == 0) {
+    throw std::invalid_argument("DD must be between 1 and 31 inclusive.");
+  }
   // Copied from http://www.cplusplus.com/reference/ctime/mktime/.
   time_t rawtime;
   struct tm * timeinfo = localtime ( &rawtime );
@@ -19,6 +30,9 @@ Parser::Parser(int date, const std::string &outputFilename) {
   timeinfo->tm_mon = month - 1; // Months are 0-indexed.
   timeinfo->tm_mday = day;
   unsigned int epochToMidnightLocalSeconds = mktime (timeinfo);
+  std::cout << epochToMidnightLocalSeconds;
+
+  // 1 second = 1E9 nanoseconds.
   epochToMidnightLocalNanos = 1E9 * epochToMidnightLocalSeconds;
 
   // Empty the file.

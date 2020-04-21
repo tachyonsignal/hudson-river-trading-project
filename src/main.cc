@@ -18,7 +18,7 @@ const char *outputFile = "output";
 
 int main(int argc, char **argv) {
 
-    constexpr int currentDate = 20180612;
+    constexpr int currentDate = 19701231;
     Parser myParser(currentDate, std::string(outputFile));
 
     int fd = open(inputFile, O_RDONLY);
