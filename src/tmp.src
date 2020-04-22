@@ -1,0 +1,18 @@
+
+
+ it('should create budget plan', () => {
+  return g.execute((newBillableBudgetPlanResponse, newAccountID) => {
+    expect(newBudgetPlanResponse).toEqual({
+      results: [
+        {
+          resourceName: expect.stringMatching(
+          new RegExp(
+                `^accounts/${newAccountID}/budgetPlans/40[1-9][0-9]*$`,
+                'g'
+              )
+          )
+        }
+      ]
+    });
+  });
+});

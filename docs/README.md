@@ -16,3 +16,6 @@ If you're working on multiple projects, then go ahead and create multiple enviro
 
 If you run into any problems, see our [troubleshooting documentation](https://docs.microsoft.com/en-us/visualstudio/online/resources/troubleshooting) for potential workarounds. Additionally, if you have any questions and/or feedback, please don't hesitate to reach out to the team on [GitHub](https://github.com/microsoftdocs/vsonline).
 
+
+xxd -r -p input.txt output.bin
+

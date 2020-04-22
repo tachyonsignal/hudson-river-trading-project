@@ -70,3 +70,9 @@ no payload.
 - 1 <= MM <= 12
 - 0 <= DD <= 31
 
+## I/O Redirection
+
+The current interface allows client specify a filename, and the contract is to write to this file.
+
+A more flexible interface would accept an I/O stream. Then clients and test
+can specify where to output data, namely in-memory and assert against. With the current implementation, the tests would have to check files.

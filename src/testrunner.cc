@@ -40,6 +40,14 @@ struct ExecutedOrder {
   double price;
 }; 
 
+struct ReducedOrder {
+  char msgType[2];
+  uint16_t msgSize;
+  char ticker[8];
+  uint64_t timestamp;
+  uint64_t orderRef;
+  uint32_t sizeRemaining;
+};
 
 int openFile(const char* inputFile) {
   int fd = open(inputFile, O_RDONLY);
@@ -81,6 +89,16 @@ void readExecutedOrder(std::fstream &fh, ExecutedOrder &executedOrder) {
   fh.read((char*)&executedOrder.size, sizeof(executedOrder.size));
   fh.read((char*)&executedOrder.price, sizeof(executedOrder.price));
 }
+
+void readReducedOrder(std::fstream &fh, ReducedOrder &reducedOrder) {
+  fh.read((char*)&reducedOrder.msgType, sizeof(reducedOrder.msgType));
+  fh.read((char*)&reducedOrder.msgSize, sizeof(reducedOrder.msgSize));
+  fh.read((char*)&reducedOrder.ticker, sizeof(reducedOrder.ticker));
+  fh.read((char*)&reducedOrder.timestamp, sizeof(reducedOrder.timestamp));
+  fh.read((char*)&reducedOrder.orderRef, sizeof(reducedOrder.orderRef));
+  fh.read((char*)&reducedOrder.sizeRemaining, sizeof(reducedOrder.sizeRemaining));
+}
+
 
 void test_basic() {
   const char *inputFile = "test_artifacts/test_basic.in";
@@ -165,9 +183,69 @@ void test_add_execute() {
   ASSERT_EQUALS(executedOrder.price, -128.0);
 }
 
+void test_add_canceled() {
+ const char *inputFile = "test_artifacts/test_add_canceled.in";
+  const char *outputFile = "test_artifacts/test_add_canceled.out";
+  std::fstream fh;
+  fh.open(outputFile, std::fstream::in | std::fstream::binary);
+
+  int fd = openFile(inputFile);
+  Parser myParser(19700102, std::string(outputFile));
+  read(myParser, fd);
+
+  AddOrder addOrder;
+  readAddOrder(fh, addOrder);
+
+  ASSERT_EQUALS(addOrder.size, 100);
+
+  ReducedOrder reducedOrder;
+  readReducedOrder(fh, reducedOrder);
+  ASSERT_EQUALS(reducedOrder.msgType[0], 0x00);
+  ASSERT_EQUALS(reducedOrder.msgType[1], 0x03);
+  ASSERT_EQUALS(reducedOrder.msgSize, 32);
+  ASSERT_EQUALS(reducedOrder.timestamp, 86402123456789);
+  ASSERT_EQUALS(reducedOrder.orderRef, 1);
+  ASSERT_EQUALS(reducedOrder.sizeRemaining, 52);
+}
+
+void test_add_canceled_canceled() {
+  const char *inputFile = "test_artifacts/test_add_canceled_canceled.in";
+  const char *outputFile = "test_artifacts/test_add_canceled_canceled.out";
+  std::fstream fh;
+  fh.open(outputFile, std::fstream::in | std::fstream::binary);
+
+  int fd = openFile(inputFile);
+  Parser myParser(19700102, std::string(outputFile));
+  read(myParser, fd);
+
+  AddOrder addOrder;
+  readAddOrder(fh, addOrder);
+
+  ASSERT_EQUALS(addOrder.size, 100);
+
+  ReducedOrder reducedOrder;
+  readReducedOrder(fh, reducedOrder);
+  ASSERT_EQUALS(reducedOrder.msgType[0], 0x00);
+  ASSERT_EQUALS(reducedOrder.msgType[1], 0x03);
+  ASSERT_EQUALS(reducedOrder.msgSize, 32);
+  ASSERT_EQUALS(reducedOrder.timestamp, 86402123456789);
+  ASSERT_EQUALS(reducedOrder.orderRef, 1);
+  ASSERT_EQUALS(reducedOrder.sizeRemaining, 52);
+
+  ReducedOrder reducedOrder2;
+  readReducedOrder(fh, reducedOrder2);
+  ASSERT_EQUALS(reducedOrder2.msgType[0], 0x00);
+  ASSERT_EQUALS(reducedOrder2.msgType[1], 0x03);
+  ASSERT_EQUALS(reducedOrder2.msgSize, 32);
+  ASSERT_EQUALS(reducedOrder2.timestamp, 86402123456789);
+  ASSERT_EQUALS(reducedOrder2.orderRef, 1);
+  ASSERT_EQUALS(reducedOrder2.sizeRemaining, 4);
+}
+
 int main(int argc, char **argv) {
   // test_basic();
-  test_add_execute();
-
+  // test_add_execute();
+  test_add_canceled();
+  test_add_canceled_canceled();
   return 0;
 }

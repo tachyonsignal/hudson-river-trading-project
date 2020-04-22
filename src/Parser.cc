@@ -308,9 +308,14 @@ char* Parser::mapReduced(const char* in) {
   }
   
   // Size remaining. Offset 28, length 4.
-  unsigned int sizeInt = readBigEndianUint32(in, 18);
+  unsigned int sizeInt = readBigEndianUint32(in, 17);
   unsigned int remainingSize = o.size - sizeInt;
-  o.size = remainingSize;
+  orders[orderRef] = {
+    o.ticker,
+    o.price, 
+    remainingSize
+  };
+
   char* sizeBytes = reinterpret_cast<char*>(&remainingSize);
   for(int i = 0 ; i < 4; i++) {
     out[28 + i] = sizeBytes[i];
