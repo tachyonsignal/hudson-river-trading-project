@@ -230,6 +230,7 @@ void test_add_canceled() {
 }
 
 void test_add_canceled_canceled() {
+  // TODO: Split test input / output directorys.
   const char *inputFile = "test_artifacts/test_add_canceled_canceled.in";
   const char *outputFile = "test_artifacts/test_add_canceled_canceled.out";
   std::fstream fh;
@@ -325,11 +326,11 @@ void test_add_replaced_canceled() {
 }
 
 int main(int argc, char **argv) {
-  // test_basic();
-  // test_add_execute();
-  // test_add_canceled();
-  // test_add_canceled_canceled();
-  // test_add_replaced();
+  test_basic();
+  test_add_execute();
+  test_add_canceled();
+  test_add_canceled_canceled();
+  test_add_replaced();
   test_add_replaced_canceled();
   return 0;
 }

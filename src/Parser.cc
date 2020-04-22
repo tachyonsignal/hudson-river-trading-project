@@ -324,6 +324,7 @@ char* Parser::mapReduced(const char* in) {
 }
 
 char* Parser::mapReplaced(const char *in) {
+  // TODO: consider re-using test struct.
   char* out = new char[48];
   // Msg type. Offset 0, length 2.
   out[0] = 0x00, out[1] = 0x04;
@@ -333,6 +334,7 @@ char* Parser::mapReplaced(const char *in) {
   // Lookup add order using order ref.
   unsigned long long orderRef = readBigEndianUint64(in, 9);
   Order_t o = lookupOrder(orderRef);
+  // TODO: mutate existing order in-place.
   // Order's size should go to 0.
   orders[orderRef] = {
     o.ticker,

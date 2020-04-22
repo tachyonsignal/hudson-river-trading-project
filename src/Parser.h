@@ -4,7 +4,10 @@
 #include <queue>          // std::queue
 #include <unordered_map>  // std::unordered_map
 
+// typedef typedef char ticker[8];
+
 struct Order_t {
+  // Ticker characters, with spaces replaced by nul.
   char * ticker;
   double price;
   uint32_t size;
