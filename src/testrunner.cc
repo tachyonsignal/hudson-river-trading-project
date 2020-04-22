@@ -49,6 +49,18 @@ struct ReducedOrder {
   uint32_t sizeRemaining;
 };
 
+struct ReplacedOrder {
+  char msgType[2];
+  uint16_t msgSize;
+  char ticker[8];
+  uint64_t timestamp;
+  uint64_t oldOrderRef;
+  uint64_t newOrderRef;
+  uint32_t newSize;
+  double newPrice;
+};
+
+
 int openFile(const char* inputFile) {
   int fd = open(inputFile, O_RDONLY);
   if (fd == -1) {
@@ -99,6 +111,16 @@ void readReducedOrder(std::fstream &fh, ReducedOrder &reducedOrder) {
   fh.read((char*)&reducedOrder.sizeRemaining, sizeof(reducedOrder.sizeRemaining));
 }
 
+void readReplacedOrder(std::fstream &fh, ReplacedOrder &replacedOrder) {
+  fh.read((char*)&replacedOrder.msgType, sizeof(replacedOrder.msgType));
+  fh.read((char*)&replacedOrder.msgSize, sizeof(replacedOrder.msgSize));
+  fh.read((char*)&replacedOrder.ticker, sizeof(replacedOrder.ticker));
+  fh.read((char*)&replacedOrder.timestamp, sizeof(replacedOrder.timestamp));
+  fh.read((char*)&replacedOrder.oldOrderRef, sizeof(replacedOrder.oldOrderRef));
+  fh.read((char*)&replacedOrder.newOrderRef, sizeof(replacedOrder.newOrderRef));
+  fh.read((char*)&replacedOrder.newSize, sizeof(replacedOrder.newSize));
+  fh.read((char*)&replacedOrder.newPrice, sizeof(replacedOrder.newPrice));
+}
 
 void test_basic() {
   const char *inputFile = "test_artifacts/test_basic.in";
@@ -242,10 +264,37 @@ void test_add_canceled_canceled() {
   ASSERT_EQUALS(reducedOrder2.sizeRemaining, 4);
 }
 
+void test_add_replaced() {
+  const char *inputFile = "test_artifacts/add_replaced.in";
+  const char *outputFile = "test_artifacts/add_replaced.out";
+  std::fstream fh;
+  fh.open(outputFile, std::fstream::in | std::fstream::binary);
+
+  int fd = openFile(inputFile);
+  Parser myParser(19700102, std::string(outputFile));
+  read(myParser, fd);
+
+  AddOrder addOrder;
+  readAddOrder(fh, addOrder);
+  ASSERT_EQUALS(addOrder.size, 100);
+
+  ReplacedOrder replacedOrder;
+  readReplacedOrder(fh, replacedOrder);
+  ASSERT_EQUALS(replacedOrder.msgType[0], 0x00);
+  ASSERT_EQUALS(replacedOrder.msgType[1], 0x04);
+  ASSERT_EQUALS(replacedOrder.msgSize, 48);
+  ASSERT_EQUALS(replacedOrder.timestamp, 86402123456789);
+  ASSERT_EQUALS(replacedOrder.oldOrderRef, 1);
+  ASSERT_EQUALS(replacedOrder.newOrderRef, 2);
+  ASSERT_EQUALS(replacedOrder.newSize, 4294967295);
+  ASSERT_EQUALS(replacedOrder.newPrice - 2.147483647e+09, 0);
+}
+
 int main(int argc, char **argv) {
   // test_basic();
   // test_add_execute();
-  test_add_canceled();
-  test_add_canceled_canceled();
+  // test_add_canceled();
+  // test_add_canceled_canceled();
+  test_add_replaced();
   return 0;
 }

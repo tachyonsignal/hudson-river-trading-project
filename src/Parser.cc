@@ -140,12 +140,12 @@ uint64_t Parser::readBigEndianUint64(const char *in, int offset) {
     ((uint64_t)(uint8_t)in[offset+6] << 8) +
     ((uint64_t)(uint8_t)in[offset+7]));
 }
-unsigned int Parser::readBigEndianUint32(const char *in, int offset) {
+uint32_t Parser::readBigEndianUint32(const char *in, int offset) {
   return (
-    (unsigned int)(in[offset]) << 24 |
-    (unsigned int)(in[offset+1]) << 16 |
-    (unsigned int)(in[offset+2]) << 8 |
-    (unsigned int)(in[offset+3]));
+    (uint32_t)((uint8_t)in[offset]) << 24 |
+    (uint32_t)((uint8_t)in[offset+1]) << 16 |
+    (uint32_t)((uint8_t)in[offset+2]) << 8 |
+    (uint32_t)((uint8_t)in[offset+3]));
 }
 
 uint16_t Parser::readBigEndianUint16(const char *buf, int offset) {
@@ -353,9 +353,10 @@ char* Parser::mapReplaced(const char *in) {
 
   // New order reference number. offset 28, length 8.
   unsigned long long newOrderRef = readBigEndianUint64(in, 17);
+  printf("newOrderRef %lu\n", newOrderRef);
   char* newOrderRefBytes = reinterpret_cast<char*>(&newOrderRef);
   for(int i = 0 ; i < 8; i++) {
-    out[28] = newOrderRefBytes[i];
+    out[28 + i] = newOrderRefBytes[i];
   }
 
   // New size. Offset 36, length 4.
@@ -366,7 +367,9 @@ char* Parser::mapReplaced(const char *in) {
   }
 
   int32_t priceInt = readBigEndianUint32(in, 29);
+  printf("priceInt: %d\n", priceInt);
   double priceDouble = double(priceInt);
+  printf("Price double: %.7lf\n", priceDouble);
   char* priceBytes = reinterpret_cast<char*>(&priceDouble);
   // On x86, the bytes of the double are in little-endian order.
   for(int i = 0 ; i < 8 ; i++) {
@@ -375,7 +378,6 @@ char* Parser::mapReplaced(const char *in) {
 
   return out;
 }
-
 
 char* Parser::popNBytes(int n) {
   char* out = new char[n];
