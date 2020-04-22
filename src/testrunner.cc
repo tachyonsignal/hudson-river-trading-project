@@ -122,8 +122,8 @@ void readReplacedOrder(std::fstream &fh, ReplacedOrder &replacedOrder) {
 }
 
 void test_basic() {
-  const char *inputFile = "test_artifacts/test_basic.in";
-  const char *outputFile = "test_artifacts/test_result.out";
+  const char *inputFile = "test_input/test_basic.in";
+  const char *outputFile = "test_output/test_result.out";
   std::fstream fh;
   fh.open(outputFile, std::fstream::in | std::fstream::binary);
 
@@ -167,8 +167,8 @@ void test_basic() {
 }
 
 void test_add_execute() {
- const char *inputFile = "test_artifacts/test_add_execute.in";
-  const char *outputFile = "test_artifacts/test_add_execute.out";
+ const char *inputFile = "test_input/test_add_execute.in";
+  const char *outputFile = "test_output/test_add_execute.out";
   std::fstream fh;
   fh.open(outputFile, std::fstream::in | std::fstream::binary);
 
@@ -202,11 +202,13 @@ void test_add_execute() {
   ASSERT_EQUALS(executedOrder.orderRef, 1);
   ASSERT_EQUALS(executedOrder.size, 49);
   ASSERT_EQUALS(executedOrder.price, -128.0);
+  fh.close();
+  close(fd);
 }
 
 void test_add_canceled() {
- const char *inputFile = "test_artifacts/test_add_canceled.in";
-  const char *outputFile = "test_artifacts/test_add_canceled.out";
+ const char *inputFile = "test_input/test_add_canceled.in";
+  const char *outputFile = "test_output/test_add_canceled.out";
   std::fstream fh;
   fh.open(outputFile, std::fstream::in | std::fstream::binary);
 
@@ -227,12 +229,15 @@ void test_add_canceled() {
   ASSERT_EQUALS(reducedOrder.timestamp, 86402123456789);
   ASSERT_EQUALS(reducedOrder.orderRef, 1);
   ASSERT_EQUALS(reducedOrder.sizeRemaining, 52);
+
+  fh.close();
+  close(fd);
 }
 
 void test_add_canceled_canceled() {
   // TODO: Split test input / output directorys.
-  const char *inputFile = "test_artifacts/test_add_canceled_canceled.in";
-  const char *outputFile = "test_artifacts/test_add_canceled_canceled.out";
+  const char *inputFile = "test_input/test_add_canceled_canceled.in";
+  const char *outputFile = "test_output/test_add_canceled_canceled.out";
   std::fstream fh;
   fh.open(outputFile, std::fstream::in | std::fstream::binary);
 
@@ -262,11 +267,14 @@ void test_add_canceled_canceled() {
   ASSERT_EQUALS(reducedOrder2.timestamp, 86402123456789);
   ASSERT_EQUALS(reducedOrder2.orderRef, 1);
   ASSERT_EQUALS(reducedOrder2.sizeRemaining, 4);
+
+  fh.close();
+  close(fd);
 }
 
 void test_add_replaced() {
-  const char *inputFile = "test_artifacts/add_replaced.in";
-  const char *outputFile = "test_artifacts/add_replaced.out";
+  const char *inputFile = "test_input/add_replaced.in";
+  const char *outputFile = "test_output/add_replaced.out";
   std::fstream fh;
   fh.open(outputFile, std::fstream::in | std::fstream::binary);
 
@@ -288,11 +296,14 @@ void test_add_replaced() {
   ASSERT_EQUALS(replacedOrder.newOrderRef, 2);
   ASSERT_EQUALS(replacedOrder.newSize, 4294967295);
   ASSERT_EQUALS(replacedOrder.newPrice - 2.147483647e+09, 0);
+
+  fh.close();
+  close(fd);
 }
 
 void test_add_replaced_canceled() {
-  const char *inputFile = "test_artifacts/add_replaced_canceled.in";
-  const char *outputFile = "test_artifacts/add_replaced_canceled.out";
+  const char *inputFile = "test_input/add_replaced_canceled.in";
+  const char *outputFile = "test_output/add_replaced_canceled.out";
   std::fstream fh;
   fh.open(outputFile, std::fstream::in | std::fstream::binary);
 
@@ -323,14 +334,29 @@ void test_add_replaced_canceled() {
   ASSERT_EQUALS(reducedOrder.timestamp, 86402123456789);
   ASSERT_EQUALS(reducedOrder.orderRef, 1);
   ASSERT_EQUALS(reducedOrder.sizeRemaining, 0);
+
+  fh.close();
+  close(fd);
 }
 
 int main(int argc, char **argv) {
+  // TODO: create output dir first.
   test_basic();
   test_add_execute();
   test_add_canceled();
   test_add_canceled_canceled();
   test_add_replaced();
   test_add_replaced_canceled();
+
+  // TODO:
+  // Test add, test reduce, test cancel, test reduce. test replace, test reduce of replaced order.
+  
+  // TODO: The side and ticker symbol of the order cannot be changed and should be inherited from the
+  // original order that is being replaced.
+
+  // TODO:
+  // Test straddling packet pundaries
+
+  // TODO: set n messages in one packet.
   return 0;
 }
