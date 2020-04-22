@@ -308,8 +308,8 @@ char* Parser::mapReduced(const char* in) {
   }
   
   // Size remaining. Offset 28, length 4.
-  unsigned int sizeInt = readBigEndianUint32(in, 17);
-  unsigned int remainingSize = o.size - sizeInt;
+  uint32_t sizeInt = readBigEndianUint32(in, 17);
+  uint32_t remainingSize = sizeInt > o.size ? 0 : o.size - sizeInt;
   orders[orderRef] = {
     o.ticker,
     o.price, 
@@ -333,6 +333,13 @@ char* Parser::mapReplaced(const char *in) {
   // Lookup add order using order ref.
   unsigned long long orderRef = readBigEndianUint64(in, 9);
   Order_t o = lookupOrder(orderRef);
+  // Order's size should go to 0.
+  orders[orderRef] = {
+    o.ticker,
+    o.price, 
+    0
+  };
+
   // Stock ticker. Offset 4, length 8.
   for(int i = 0 ; i < 8; i++) {
     out[4+i] = o.ticker[i];

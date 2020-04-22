@@ -7,7 +7,7 @@
 struct Order_t {
   char * ticker;
   double price;
-  unsigned int size;
+  uint32_t size;
 };
 
 class Parser {
