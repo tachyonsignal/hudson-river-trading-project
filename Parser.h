@@ -14,15 +14,16 @@ struct Order_t {
 };
 
 class Parser {
-  // Sequence number of the next Packet whose payload can be queued.
-  unsigned int sequencePosition;
+  // Sequence number of the next Packet that is ready for processing.
+  uint32_t sequencePosition;
   // The file to write to.
   std::string filename;
   uint64_t epochToMidnightLocalNanos;
 
-  // Payload bytes that have been received but not yet processed.
+  // Payload bytes that have arrived in order but not yet processed.
   std::queue<char> q;
-  // Utility to grab a chunk of bytes off the queue.
+
+  // Utility to grab a chunk of bytes off the queue and into buf.
   char* popNBytes(int n, char** buf);
 
   // Stash packets that arrive "early" / out of sequence, keyed by seq number.
@@ -41,7 +42,7 @@ class Parser {
 
   // Utilities to interpret bytes starting at given offset in buffer.
   uint64_t readBigEndianUint64(const char *buf, int offset);
-  unsigned int readBigEndianUint32(const char *buf, int offset);
+  uint32_t readBigEndianUint32(const char *buf, int offset);
   uint16_t readBigEndianUint16(const char *buf, int offset);
 
   // Sub-routines of #onUDPPacket.

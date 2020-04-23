@@ -31,7 +31,7 @@ Parser::Parser(int date, const std::string &outputFilename) {
   timeinfo->tm_hour = 0;
   timeinfo->tm_min = 0;
   timeinfo->tm_sec = 0;
-  unsigned int epochToMidnightLocalSeconds = mktime (timeinfo);
+  uint32_t epochToMidnightLocalSeconds = mktime (timeinfo);
   epochToMidnightLocalNanos = 1000000000 * (uint64_t) epochToMidnightLocalSeconds;
   // Empty the file.
   std::ofstream outfile;
@@ -97,15 +97,16 @@ void Parser::processQueue() {
   delete[] in, delete[] out, outfile.close();
 }
 
-void Parser::onUDPPacket(const char *buf3, size_t len) {
+void Parser::onUDPPacket(const char *buffer, size_t len) {
   printf("Received packet of size %zu\n", len);
   if(static_cast<int>(len) < 6) {
       throw std::invalid_argument("Packet must be atleast 6 bytes");
   }
 
+  // Copy the buffer.
   char *buf = new char[len];
-  for(int i = 0; i < static_cast<int>(len); i++ ) {
-    buf[i] = buf3[i];
+  for(int i = 0; i < static_cast<int>(len); i++) {
+    buf[i] = buffer[i];
   }
 
   uint16_t packetSize = readBigEndianUint16(buf, 0);
@@ -113,7 +114,7 @@ void Parser::onUDPPacket(const char *buf3, size_t len) {
       throw std::invalid_argument("Packet size does match buffer length.");
   }
   
-  unsigned int sequenceNumber = readBigEndianUint32(buf, 2);
+  uint32_t sequenceNumber = readBigEndianUint32(buf, 2);
   // Packet arrived "early".
   if (sequenceNumber > sequencePosition) {
     // Store for when the gap in packet sequence is closed.
@@ -197,7 +198,7 @@ void Parser::mapAdd(const char *in, char ** outPtr) {
   }
 
   // Size. Offset 32, length 4.
-  unsigned int sizeInt = readBigEndianUint32(in, 18);
+  uint32_t sizeInt = readBigEndianUint32(in, 18);
   char* sizeBytes = reinterpret_cast<char*>(&sizeInt);
   for(int i = 0 ; i < 4; i++) {
     out[32 + i] = sizeBytes[i];
@@ -255,13 +256,13 @@ void Parser::mapExecuted(const char *in, char** outPtr) {
   }
 
   // Size. Offset 28, length 4.
-  unsigned int sizeInt = readBigEndianUint32(in, 17);
+  uint32_t sizeInt = readBigEndianUint32(in, 17);
   // Update remaining order size.
   if(sizeInt > o->size) {
     // Can execute at most the remaining size.
     sizeInt = o->size;
   }
-  unsigned int remainingSize = o->size - sizeInt;
+  uint32_t remainingSize = o->size - sizeInt;
   o->size =  remainingSize;
   char* sizeBytes = reinterpret_cast<char*>(&sizeInt);
   for(int i = 0 ; i < 4; i++) {
@@ -355,7 +356,7 @@ void Parser::mapReplaced(const char *in, char ** outPtr) {
   }
 
   // New size. Offset 36, length 4.
-  unsigned int sizeInt = readBigEndianUint32(in, 25);
+  uint32_t sizeInt = readBigEndianUint32(in, 25);
   char* sizeBytes = reinterpret_cast<char*>(&sizeInt);
   for(int i = 0 ; i < 4; i++) {
     out[36 + i] = sizeBytes[i];
