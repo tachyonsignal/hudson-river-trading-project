@@ -23,7 +23,7 @@ class Parser {
   // Payload bytes that have been received but not yet processed.
   std::queue<char> q;
   // Utility to grab a chunk of bytes off the queue.
-  char* popNBytes(int n);
+  char* popNBytes(int n, char** buf);
 
   // Stash packets that arrive "early" / out of sequence, keyed by seq number.
   std::unordered_map<uint16_t, const char*> packets;

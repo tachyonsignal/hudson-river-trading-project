@@ -52,12 +52,6 @@ void Parser::enqueuePayloads(const char *buf, size_t len) {
   while(entry != packets.end()) {
     const char* skippedPacketBytes = entry->second;
     uint16_t skippedPacketSize = readBigEndianUint16(skippedPacketBytes, 0);
-
-    if(skippedPacketSize == 39) {
-      unsigned long long newOrderRef = readBigEndianUint64(buf, 23);
-    }
-
-    
     for( int i = 6; i < skippedPacketSize; i++) {
       q.push(skippedPacketBytes[i]);
     }
@@ -70,36 +64,40 @@ void Parser::processQueue() {
   std::ofstream outfile;
   outfile.open(filename, std::ios_base::app); // append instead of overwrite
   
+  // Reuse buffer to store current input message.
+  char* in = new char[100];
+
   // There's atleast 1 complete message in the queue.
   while(q.size() >= 34 ||
       (q.size() >= 33 && q.front() != 'A') ||
       (q.size() >= 21 && (q.front() == 'X' || q.front() == 'E'))) {
     char msgType = q.front();
     if(msgType == 'A') {
-      char* in = popNBytes(34);
+      popNBytes(34, &in);
       char* out = mapAdd(in);
       outfile.write(out, 44);
-      delete[] in, delete[] out;
+      delete[] out;
     } else if(msgType == 'E') {
-      char* in = popNBytes(21);
+      popNBytes(21, &in);
       char* out = mapExecuted(in);
       outfile.write(out, 40);
-      delete[] in, delete[] out;
+      delete[] out;
     } else if(msgType == 'X') {
-      char* in = popNBytes(21);
+      popNBytes(21, &in);
       char* out = mapReduced(in);
       outfile.write(out, 32);
-      delete[] in, delete[] out;
+      delete[] out;
     } else if(msgType == 'R') {
-      char* in = popNBytes(33);
+      popNBytes(33, &in);
       unsigned long long newOrderRef = readBigEndianUint64(in, 17);
       char* out = mapReplaced(in);
       outfile.write(out, 48);
-      delete[] in, delete[] out;
+      delete[] out;
     } else {
       throw std::runtime_error("Unexpected message type");
     }
   }
+  delete[] in;
   outfile.close();
 }
 
@@ -119,9 +117,6 @@ void Parser::onUDPPacket(const char *buf3, size_t len) {
       throw std::invalid_argument("Packet size does match buffer length.");
   }
   
-  if(packetSize == 39) {
-    unsigned long long newOrderRef = readBigEndianUint64(buf, 23);
-  }
   unsigned int sequenceNumber = readBigEndianUint32(buf, 2);
   // Packet arrived "early".
   if (sequenceNumber > sequencePosition) {
@@ -406,11 +401,9 @@ char* Parser::mapReplaced(const char *in) {
   return out;
 }
 
-char* Parser::popNBytes(int n) {
-  char* out = new char[n];
+char* Parser::popNBytes(int n, char** buf) {
   for(int i = 0 ; i < n; i++) {
-    out[i] = q.front();
+    (*buf)[i] = q.front();
     q.pop();
   }
-  return out;
 }
