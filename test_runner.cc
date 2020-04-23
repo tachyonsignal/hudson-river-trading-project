@@ -123,7 +123,7 @@ void readReplacedOrder(std::fstream &fh, ReplacedOrder &replacedOrder) {
   fh.read((char*)&replacedOrder.newPrice, sizeof(replacedOrder.newPrice));
 }
 
-void test_basic() {
+void test_add_add() {
   const char *inputFile = "test_input/AA.in";
   const char *outputFile = "test_output/AA.out";
 
@@ -920,10 +920,11 @@ void test_add_replaced_replaced_executed_straddled_out_of_order() {
 int main(int argc, char **argv) {
   if (mkdir("./test_output", 0755) != 0) {
     cout << "Please create a directory ./test_output first." << endl;
+    return -1;
   }
 
   // Test messages
-  test_basic();
+  test_add_add();
   test_add_execute();
   test_add_canceled();
   test_add_canceled_canceled();
