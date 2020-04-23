@@ -15,4 +15,4 @@ libparser.a: $(OBJS)
 	ar rcs libparser.a $^
 
 clean:
-	rm -f *.o *.a feed
+	rm -f -r *.o *.a feed test_output

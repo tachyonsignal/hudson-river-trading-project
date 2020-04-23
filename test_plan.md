@@ -1,5 +1,28 @@
 # Test plan
 
+## Test suite
+
+The test suite is defined in test_runner.cc. It reads from various test input files 
+in the test_input directory, feeds them to the parser. Output files are in the test_output
+directory, which the test reads back into memory, deserializes into structs for the messages
+and asserts 
+
+```
+$ make test
+$ ./test
+$ make clean 
+```
+
+The test implements many of the message sequences outlined here, as well as cases for 
+packets including straddling and out-of-order messages.
+
+### Assertions
+The test suite is just a #main program with a bunch of functions responsible for each
+input/ouput case. These functions assert on the deserialized output bytes. 
+
+The default assert is not informative enough, and a macro was added allowing asserting
+two values are equal, and barfs with the corresponding value.
+
 ## Minimum viable message sequences
 
 The most elementary test cases involve testing the four message types
