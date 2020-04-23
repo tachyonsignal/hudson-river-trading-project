@@ -122,8 +122,8 @@ void readReplacedOrder(std::fstream &fh, ReplacedOrder &replacedOrder) {
 }
 
 void test_basic() {
-  const char *inputFile = "test_input/test_basic.in";
-  const char *outputFile = "test_output/test_result.out";
+  const char *inputFile = "test_input/AA.in";
+  const char *outputFile = "test_output/AA.out";
   std::fstream fh;
   fh.open(outputFile, std::fstream::in | std::fstream::binary);
 
@@ -167,8 +167,8 @@ void test_basic() {
 }
 
 void test_add_execute() {
- const char *inputFile = "test_input/test_add_execute.in";
-  const char *outputFile = "test_output/test_add_execute.out";
+ const char *inputFile = "test_input/AE.in";
+  const char *outputFile = "test_output/AE.out";
   std::fstream fh;
   fh.open(outputFile, std::fstream::in | std::fstream::binary);
 
@@ -207,8 +207,8 @@ void test_add_execute() {
 }
 
 void test_add_canceled() {
- const char *inputFile = "test_input/test_add_canceled.in";
-  const char *outputFile = "test_output/test_add_canceled.out";
+ const char *inputFile = "test_input/AC.in";
+  const char *outputFile = "test_output/AC.out";
   std::fstream fh;
   fh.open(outputFile, std::fstream::in | std::fstream::binary);
 
@@ -236,8 +236,8 @@ void test_add_canceled() {
 
 void test_add_canceled_canceled() {
   // TODO: Split test input / output directorys.
-  const char *inputFile = "test_input/test_add_canceled_canceled.in";
-  const char *outputFile = "test_output/test_add_canceled_canceled.out";
+  const char *inputFile = "test_input/ACC.in";
+  const char *outputFile = "test_output/ACC.out";
   std::fstream fh;
   fh.open(outputFile, std::fstream::in | std::fstream::binary);
 
@@ -273,8 +273,8 @@ void test_add_canceled_canceled() {
 }
 
 void test_add_replaced() {
-  const char *inputFile = "test_input/add_replaced.in";
-  const char *outputFile = "test_output/add_replaced.out";
+  const char *inputFile = "test_input/AR.in";
+  const char *outputFile = "test_output/AR.out";
   std::fstream fh;
   fh.open(outputFile, std::fstream::in | std::fstream::binary);
 
@@ -302,8 +302,8 @@ void test_add_replaced() {
 }
 
 void test_add_replaced_canceled() {
-  const char *inputFile = "test_input/add_replaced_canceled.in";
-  const char *outputFile = "test_output/add_replaced_canceled.out";
+  const char *inputFile = "test_input/ARC.in";
+  const char *outputFile = "test_output/ARC.out";
   std::fstream fh;
   fh.open(outputFile, std::fstream::in | std::fstream::binary);
 
