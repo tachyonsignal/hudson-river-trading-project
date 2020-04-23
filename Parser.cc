@@ -65,7 +65,8 @@ void Parser::processQueue() {
   outfile.open(filename, std::ios_base::app); // append instead of overwrite
   
   // Reuse buffer to store current input message.
-  char* in = new char[100];
+  char* in = new char[34];
+  char* out = new char[48];
 
   // There's atleast 1 complete message in the queue.
   while(q.size() >= 34 ||
@@ -74,31 +75,26 @@ void Parser::processQueue() {
     char msgType = q.front();
     if(msgType == 'A') {
       popNBytes(34, &in);
-      char* out = mapAdd(in);
+      mapAdd(in, &out);
       outfile.write(out, 44);
-      delete[] out;
     } else if(msgType == 'E') {
       popNBytes(21, &in);
-      char* out = mapExecuted(in);
+      mapExecuted(in, &out);
       outfile.write(out, 40);
-      delete[] out;
     } else if(msgType == 'X') {
       popNBytes(21, &in);
-      char* out = mapReduced(in);
+      mapReduced(in, &out);
       outfile.write(out, 32);
-      delete[] out;
     } else if(msgType == 'R') {
       popNBytes(33, &in);
-      unsigned long long newOrderRef = readBigEndianUint64(in, 17);
-      char* out = mapReplaced(in);
+      mapReplaced(in, &out);
       outfile.write(out, 48);
-      delete[] out;
     } else {
       throw std::runtime_error("Unexpected message type");
     }
   }
-  delete[] in;
-  outfile.close();
+
+  delete[] in, delete[] out, outfile.close();
 }
 
 void Parser::onUDPPacket(const char *buf3, size_t len) {
@@ -156,9 +152,8 @@ uint16_t Parser::readBigEndianUint16(const char *buf, int offset) {
     (uint16_t)((uint8_t)buf[offset+1]));
 }
 
-char* Parser::mapAdd(const char *in) {
-  // Bytes associated with output message.
-  char* out = new char[44];
+void Parser::mapAdd(const char *in, char ** outPtr) {
+  char * out = *outPtr;
 
   // Msg Type field.
   out[0] = 0x00, out[1] = 0x01;
@@ -221,8 +216,6 @@ char* Parser::mapAdd(const char *in) {
     priceDouble, 
     sizeInt
   };
-
-  return out;
 }
 
 Order_t Parser::lookupOrder(unsigned long long orderRef) {
@@ -234,8 +227,8 @@ Order_t Parser::lookupOrder(unsigned long long orderRef) {
   return order->second;
 }
 
-char* Parser::mapExecuted(const char *in) {
-  char* out = new char[40];
+void Parser::mapExecuted(const char *in, char** outPtr) {
+  char* out = *outPtr;
   // Msg type. Offset 0, length 2.
   out[0] = 0x00, out[1] = 0x02;
   // Msg size. Offset 2, length 2.
@@ -285,12 +278,11 @@ char* Parser::mapExecuted(const char *in) {
     // On x86, the bytes of the double are in little-endian order.
     out[32 + i] = priceBytes[i];
   }
-
-  return out;
 }
 
-char* Parser::mapReduced(const char* in) {
-  char* out = new char[32];
+void Parser::mapReduced(const char* in, char** outPtr) {
+  char* out = *outPtr;
+
   // Msg type. Offset 0, length 2.
   out[0] = 0x00, out[1] = 0x03;
     // Msg size. Offset 2, length 2.
@@ -330,12 +322,11 @@ char* Parser::mapReduced(const char* in) {
   for(int i = 0 ; i < 4; i++) {
     out[28 + i] = sizeBytes[i];
   }
-  return out;
 }
 
-char* Parser::mapReplaced(const char *in) {
-  // TODO: consider re-using test struct.
-  char* out = new char[48];
+void Parser::mapReplaced(const char *in, char ** outPtr) {
+  char* out = *outPtr;
+
   // Msg type. Offset 0, length 2.
   out[0] = 0x00, out[1] = 0x04;
   // Msg size. Offset 2, length 2.
@@ -397,8 +388,6 @@ char* Parser::mapReplaced(const char *in) {
     priceDouble,
     sizeInt
   };
-
-  return out;
 }
 
 char* Parser::popNBytes(int n, char** buf) {

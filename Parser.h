@@ -33,11 +33,11 @@ class Parser {
   // Utility to abstract away unordered_map boilerplate, lacking ::contains.
   Order_t lookupOrder(unsigned long long orderRef);
 
-  // Functions that map from input to output message.
-  char* mapAdd(const char* in);
-  char* mapExecuted(const char* in);
-  char* mapReduced(const char* in);
-  char* mapReplaced(const char* in);
+  // Functions that map message from input to output message in second buffer.
+  void mapAdd(const char* in, char** outPtr);
+  void mapExecuted(const char* in, char** outPtr);
+  void mapReduced(const char* in, char** outPtr);
+  void mapReplaced(const char* in, char** outPtr);
 
   // Utilities to interpret bytes starting at given offset in buffer.
   uint64_t readBigEndianUint64(const char *buf, int offset);
