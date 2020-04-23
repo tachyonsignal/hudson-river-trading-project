@@ -2,7 +2,7 @@ OBJS = Parser.o
 
 all: feed
 
-test: testrunner.cc libparser.a
+test: test_runner.cc libparser.a
 	g++ -W -O2 -std=c++17 -o $@ $^
 
 feed: main.cc libparser.a
