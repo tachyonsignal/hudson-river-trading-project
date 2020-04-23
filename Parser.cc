@@ -42,18 +42,25 @@ Parser::Parser(int date, const std::string &outputFilename) {
 
 void Parser::enqueuePayloads(const char *buf, size_t len) {
   // Payload of current packet can be queued for processing.
-  printf("Payload length %zu\n", static_cast<int>(len) - 6);
   for( int i = 6; i < static_cast<int>(len); i++) {
     q.push(buf[i]);
   }
   sequencePosition++;
 
+  printf("Sequence pos: %llu\n", sequencePosition);
   // Payload bytes of previously skipped packets 
   // succeed the sequence and can be queued.
   auto entry = packets.find(sequencePosition);
   while(entry != packets.end()) {
     const char* skippedPacketBytes = entry->second;
-    int skippedPacketSize = readBigEndianUint16(skippedPacketBytes, 0);
+    uint16_t skippedPacketSize = readBigEndianUint16(skippedPacketBytes, 0);
+
+    if(skippedPacketSize == 39) {
+      unsigned long long newOrderRef = readBigEndianUint64(buf, 23);
+      printf("Enqueuing new Order ref: %llu\n", newOrderRef);
+    }
+
+    
     for( int i = 6; i < skippedPacketSize; i++) {
       q.push(skippedPacketBytes[i]);
     }
@@ -66,16 +73,12 @@ void Parser::processQueue() {
   std::ofstream outfile;
   outfile.open(filename, std::ios_base::app); // append instead of overwrite
   
-  printf("processQueue\n");
-  printf("%d", q.size());
-  printf("%d", q.front());
-
   // There's atleast 1 complete message in the queue.
   while(q.size() >= 34 ||
       (q.size() >= 33 && q.front() != 'A') ||
       (q.size() >= 21 && (q.front() == 'X' || q.front() == 'E'))) {
+    printf("Entering loop %llu with q.front(): %c\n", q.size(), q.front());
     char msgType = q.front();
-    printf("msgType %X\n", msgType);
     if(msgType == 'A') {
       char* in = popNBytes(34);
       char* out = mapAdd(in);
@@ -93,6 +96,8 @@ void Parser::processQueue() {
       delete[] in, delete[] out;
     } else if(msgType == 'R') {
       char* in = popNBytes(33);
+      unsigned long long newOrderRef = readBigEndianUint64(in, 17);
+      printf("new Order Ref: %llu\n", newOrderRef);
       char* out = mapReplaced(in);
       outfile.write(out, 48);
       delete[] in, delete[] out;
@@ -103,10 +108,15 @@ void Parser::processQueue() {
   outfile.close();
 }
 
-void Parser::onUDPPacket(const char *buf, size_t len) {
+void Parser::onUDPPacket(const char *buf3, size_t len) {
   printf("Received packet of size %zu\n", len);
   if(static_cast<int>(len) < 6) {
       throw std::invalid_argument("Packet must be atleast 6 bytes");
+  }
+
+  char *buf = new char[len];
+  for(int i = 0; i < static_cast<int>(len); i++ ) {
+    buf[i] = buf3[i];
   }
 
   uint16_t packetSize = readBigEndianUint16(buf, 0);
@@ -114,16 +124,22 @@ void Parser::onUDPPacket(const char *buf, size_t len) {
       throw std::invalid_argument("Packet size does match buffer length.");
   }
   
+  if(packetSize == 39) {
+    unsigned long long newOrderRef = readBigEndianUint64(buf, 23);
+    printf("Original new Order ref: %llu\n", newOrderRef);
+  }
   unsigned int sequenceNumber = readBigEndianUint32(buf, 2);
   printf("Packet sequence number %zu.\n", sequenceNumber);
   // Packet arrived "early".
   if (sequenceNumber > sequencePosition) {
+    printf("\tStashing the packet %lluu\n", sequenceNumber);
     // Store for when the gap in packet sequence is closed.
     packets[sequenceNumber] = buf;
   } else if (sequenceNumber < sequencePosition) {
     // Packet already arrived and processed.
     return;
   } else {
+    printf("\t Processing packet %llu\n, ", sequenceNumber);
     enqueuePayloads(buf, len);
     processQueue();
   }
@@ -150,12 +166,11 @@ uint32_t Parser::readBigEndianUint32(const char *in, int offset) {
 
 uint16_t Parser::readBigEndianUint16(const char *buf, int offset) {
   return (
-    (uint16_t)(buf[offset]) << 8 |
-    (uint16_t)(buf[offset+1]));
+    (uint16_t)((uint8_t)buf[offset]) << 8 |
+    (uint16_t)((uint8_t)buf[offset+1]));
 }
 
 char* Parser::mapAdd(const char *in) {
-  printf("mapAdd\n");
   // Bytes associated with output message.
   char* out = new char[44];
 
@@ -228,14 +243,12 @@ Order_t Parser::lookupOrder(unsigned long long orderRef) {
   auto order  = orders.find(orderRef);
   if(order == orders.end()) {
     // TODO: Throw with order ref #.
-    throw std::runtime_error("Order ref was not found.");
+    throw std::runtime_error("Order ref was not found: " +  std::to_string(orderRef));
   }
   return order->second;
 }
 
 char* Parser::mapExecuted(const char *in) {
-  printf("mapExecuted\n");
-
   char* out = new char[40];
   // Msg type. Offset 0, length 2.
   out[0] = 0x00, out[1] = 0x02;
@@ -373,7 +386,6 @@ char* Parser::mapReplaced(const char *in) {
 
   // New order reference number. offset 28, length 8.
   unsigned long long newOrderRef = readBigEndianUint64(in, 17);
-  printf("newOrderRef %lu\n", newOrderRef);
   char* newOrderRefBytes = reinterpret_cast<char*>(&newOrderRef);
   for(int i = 0 ; i < 8; i++) {
     out[28 + i] = newOrderRefBytes[i];
@@ -387,15 +399,15 @@ char* Parser::mapReplaced(const char *in) {
   }
 
   int32_t priceInt = readBigEndianUint32(in, 29);
-  printf("priceInt: %d\n", priceInt);
   double priceDouble = double(priceInt);
-  printf("Price double: %.7lf\n", priceDouble);
   char* priceBytes = reinterpret_cast<char*>(&priceDouble);
   // On x86, the bytes of the double are in little-endian order.
   for(int i = 0 ; i < 8 ; i++) {
     out[40 + i] = priceBytes[i];
   }
 
+  printf("Adding Reduced Order ref %llu\n", newOrderRef);
+  printf("Adding Old Order ref %llu\n", orderRef);
   orders[newOrderRef] = {
     o.ticker,
     priceDouble,
