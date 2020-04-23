@@ -896,39 +896,29 @@ void test_add_replaced_replaced_executed_straddled_out_of_order() {
 
 
 int main(int argc, char **argv) {
-  // TODO: create output dir first.
-  // test_basic();
-  // test_add_execute();
-  // test_add_canceled();
-  // test_add_canceled_canceled();
-  // test_add_canceled_surplus();
-  // test_add_executed_canceled();
-  // test_add_executed_surplus();
-  // test_add_executed_executed();
-  // test_add_canceled_executed();
-  // test_add_replaced();
-  // test_add_replaced_canceled();
-  // test_replaced_canceled();
-  // test_replaced_executed();
-  // test_replaced_replaced();
-  // test_replaced_replaced_executed();
-  // test_replaced_replaced_canceled();
+  // Test messages
+  test_basic();
+  test_add_execute();
+  test_add_canceled();
+  test_add_canceled_canceled();
+  test_add_canceled_surplus();
+  test_add_executed_canceled();
+  test_add_executed_surplus();
+  test_add_executed_executed();
+  test_add_canceled_executed();
+  test_add_replaced();
+  test_add_replaced_canceled();
+  test_replaced_canceled();
+  test_replaced_executed();
+  test_replaced_replaced();
+  test_replaced_replaced_executed();
+  test_replaced_replaced_canceled();
 
-  // test_add_replaced_replaced_executed_single_packet();
-  // test_add_replaced_replaced_executed_straddled();
-  // test_add_replaced_replaced_executed_out_of_order();
+  // Test packets.
+  test_add_replaced_replaced_executed_single_packet();
+  test_add_replaced_replaced_executed_straddled();
+  test_add_replaced_replaced_executed_out_of_order();
   test_add_replaced_replaced_executed_straddled_out_of_order();
 
-
-  // TODO:
-  // Test add, test reduce, test cancel, test reduce. test replace, test reduce of replaced order.
-  
-  // TODO: The side and ticker symbol of the order cannot be changed and should be inherited from the
-  // original order that is being replaced.
-
-  // TODO:
-  // Test straddling packet pundaries
-
-  // TODO: set n messages in one packet.
   return 0;
 }
