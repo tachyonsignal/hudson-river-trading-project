@@ -149,7 +149,7 @@ void test_add_add() {
   const char * expectedPadding = "\0\0\0";
   assert(std::equal(expectedPadding, expectedPadding+3, addOrder.padding));
   ASSERT_EQUALS(addOrder.size, 100);
-  ASSERT_EQUALS(addOrder.price, -128.0);
+  ASSERT_EQUALS(addOrder.price, 2000000.0);
 
   AddOrder addOrder2;
   readAddOrder(fh, addOrder2);
@@ -164,7 +164,7 @@ void test_add_add() {
   const char * expectedPadding2 = "\0\0\0";
   assert(std::equal(expectedPadding2, expectedPadding2+3, addOrder2.padding));
   ASSERT_EQUALS(addOrder2.size, 100);
-  ASSERT_EQUALS(addOrder2.price, -128.0);
+  ASSERT_EQUALS(addOrder2.price, 2000000.0);
 
   fh.close();
 }
@@ -195,7 +195,7 @@ void test_add_execute() {
   const char * expectedPadding = "\0\0\0";
   assert(std::equal(expectedPadding, expectedPadding+3, addOrder.padding));
   ASSERT_EQUALS(addOrder.size, 100);
-  ASSERT_EQUALS(addOrder.price, -128.0);
+  ASSERT_EQUALS(addOrder.price, 2000000.0);
 
   ExecutedOrder executedOrder;
   readExecutedOrder(fh, executedOrder);
@@ -206,7 +206,7 @@ void test_add_execute() {
   ASSERT_EQUALS(executedOrder.timestamp, 86402123456789);
   ASSERT_EQUALS(executedOrder.orderRef, 1);
   ASSERT_EQUALS(executedOrder.size, 49);
-  ASSERT_EQUALS(executedOrder.price, -128.0);
+  ASSERT_EQUALS(executedOrder.price, 2000000.0);
   fh.close();
 }
 
