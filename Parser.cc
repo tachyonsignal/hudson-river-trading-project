@@ -249,7 +249,7 @@ char* Parser::mapExecuted(const char *in) {
   for(int i = 0 ; i < 8; i++) {
     out[4 + i] = o.ticker[i];
   }
-
+  
   unsigned long long timestamp = readBigEndianUint64(in, 1);
   unsigned long long nanosSinceEpoch = epochToMidnightLocalNanos + timestamp; 
   char* timeBytes = reinterpret_cast<char*>(&nanosSinceEpoch);
@@ -265,10 +265,21 @@ char* Parser::mapExecuted(const char *in) {
 
   // Size. Offset 28, length 4.
   unsigned int sizeInt = readBigEndianUint32(in, 17);
+  // Update remaining order size.
+  if(sizeInt > o.size) {
+    // Can execute at most the remaining size.
+    sizeInt = o.size;
+  }
+  unsigned int remainingSize = o.size - sizeInt;
+  orders[orderRef] = {
+    o.ticker,
+    o.price, 
+    remainingSize
+  };
   char* sizeBytes = reinterpret_cast<char*>(&sizeInt);
   for(int i = 0 ; i < 4; i++) {
     out[28 + i] = sizeBytes[i];
-  }
+  } 
 
   char* priceBytes = reinterpret_cast<char*>(&o.price);
   for(int i = 0 ; i < 8; i++) {
@@ -384,6 +395,12 @@ char* Parser::mapReplaced(const char *in) {
   for(int i = 0 ; i < 8 ; i++) {
     out[40 + i] = priceBytes[i];
   }
+
+  orders[newOrderRef] = {
+    o.ticker,
+    priceDouble,
+    sizeInt
+  };
 
   return out;
 }

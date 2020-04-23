@@ -234,6 +234,131 @@ void test_add_canceled() {
   close(fd);
 }
 
+
+void test_add_canceled_surplus() {
+ const char *inputFile = "test_input/AC_exceeding_size.in";
+  const char *outputFile = "test_output/AC_exceeding_size.out";
+  std::fstream fh;
+  fh.open(outputFile, std::fstream::in | std::fstream::binary);
+
+  int fd = openFile(inputFile);
+  Parser myParser(19700102, std::string(outputFile));
+  read(myParser, fd);
+
+  AddOrder addOrder;
+  readAddOrder(fh, addOrder);
+
+  ASSERT_EQUALS(addOrder.size, 100);
+
+  ReducedOrder reducedOrder;
+  readReducedOrder(fh, reducedOrder);
+  ASSERT_EQUALS(reducedOrder.sizeRemaining, 0);
+
+  fh.close();
+  close(fd);
+}
+
+void test_add_executed_canceled() {
+ const char *inputFile = "test_input/AEC.in";
+  const char *outputFile = "test_output/AEC.out";
+  std::fstream fh;
+  fh.open(outputFile, std::fstream::in | std::fstream::binary);
+
+  int fd = openFile(inputFile);
+  Parser myParser(19700102, std::string(outputFile));
+  read(myParser, fd);
+
+  AddOrder addOrder;
+  readAddOrder(fh, addOrder);
+  ASSERT_EQUALS(addOrder.size, 100);
+
+  ExecutedOrder executedOrder;
+  readExecutedOrder(fh, executedOrder);
+  ASSERT_EQUALS(executedOrder.size, 49);
+  
+  ReducedOrder reducedOrder;
+  readReducedOrder(fh, reducedOrder);
+  ASSERT_EQUALS(reducedOrder.sizeRemaining, 3);
+
+  fh.close();
+  close(fd);
+}
+
+void test_add_executed_surplus() {
+ const char *inputFile = "test_input/AE_exceeding_size.in";
+  const char *outputFile = "test_output/AE_exceeding_size.out";
+  std::fstream fh;
+  fh.open(outputFile, std::fstream::in | std::fstream::binary);
+
+  int fd = openFile(inputFile);
+  Parser myParser(19700102, std::string(outputFile));
+  read(myParser, fd);
+
+  AddOrder addOrder;
+  readAddOrder(fh, addOrder);
+  ASSERT_EQUALS(addOrder.size, 100);
+
+  ExecutedOrder executedOrder;
+  readExecutedOrder(fh, executedOrder);
+  ASSERT_EQUALS(executedOrder.size, 100);
+  
+  fh.close();
+  close(fd);
+}
+
+void test_add_executed_executed() {
+ const char *inputFile = "test_input/AEE.in";
+  const char *outputFile = "test_output/AEE.out";
+  std::fstream fh;
+  fh.open(outputFile, std::fstream::in | std::fstream::binary);
+
+  int fd = openFile(inputFile);
+  Parser myParser(19700102, std::string(outputFile));
+  read(myParser, fd);
+
+  AddOrder addOrder;
+  readAddOrder(fh, addOrder);
+  ASSERT_EQUALS(addOrder.size, 100);
+
+  ExecutedOrder executedOrder;
+  readExecutedOrder(fh, executedOrder);
+  ASSERT_EQUALS(executedOrder.size, 98);
+
+  ExecutedOrder executedOrder2;
+  readExecutedOrder(fh, executedOrder2);
+  ASSERT_EQUALS(executedOrder2.size, 2);
+  
+  fh.close();
+  close(fd);
+}
+
+void test_add_canceled_executed() {
+ const char *inputFile = "test_input/ACE.in";
+  const char *outputFile = "test_output/ACE.out";
+  std::fstream fh;
+  fh.open(outputFile, std::fstream::in | std::fstream::binary);
+
+  int fd = openFile(inputFile);
+  Parser myParser(19700102, std::string(outputFile));
+  read(myParser, fd);
+
+  AddOrder addOrder;
+  readAddOrder(fh, addOrder);
+  ASSERT_EQUALS(addOrder.size, 100);
+
+  ReducedOrder reducedOrder;
+  readReducedOrder(fh, reducedOrder);
+  ASSERT_EQUALS(reducedOrder.sizeRemaining, 4);
+
+  ExecutedOrder executedOrder;
+  readExecutedOrder(fh, executedOrder);
+  ASSERT_EQUALS(executedOrder.size, 4);
+
+  fh.close();
+  close(fd);
+}
+
+
 void test_add_canceled_canceled() {
   // TODO: Split test input / output directorys.
   const char *inputFile = "test_input/ACC.in";
@@ -301,6 +426,125 @@ void test_add_replaced() {
   close(fd);
 }
 
+void test_replaced_canceled() {
+  const char *inputFile = "test_input/RC.in";
+  const char *outputFile = "test_output/RC.out";
+  std::fstream fh;
+  fh.open(outputFile, std::fstream::in | std::fstream::binary);
+
+  int fd = openFile(inputFile);
+  Parser myParser(19700102, std::string(outputFile));
+  read(myParser, fd);
+
+  AddOrder addOrder;
+  readAddOrder(fh, addOrder);
+  ASSERT_EQUALS(addOrder.size, 100);
+
+  ReplacedOrder replacedOrder;
+  readReplacedOrder(fh, replacedOrder);
+  ASSERT_EQUALS(replacedOrder.msgType[0], 0x00);
+  ASSERT_EQUALS(replacedOrder.msgType[1], 0x04);
+  ASSERT_EQUALS(replacedOrder.msgSize, 48);
+  ASSERT_EQUALS(replacedOrder.timestamp, 86402123456789);
+  ASSERT_EQUALS(replacedOrder.oldOrderRef, 1);
+  ASSERT_EQUALS(replacedOrder.newOrderRef, 2);
+  ASSERT_EQUALS(replacedOrder.newSize, 4294967295);
+  ASSERT_EQUALS(replacedOrder.newPrice - 2.147483647e+09, 0);
+
+  ReducedOrder reducedOrder;
+  readReducedOrder(fh, reducedOrder);
+  ASSERT_EQUALS(reducedOrder.msgType[0], 0x00);
+  ASSERT_EQUALS(reducedOrder.msgType[1], 0x03);
+  ASSERT_EQUALS(reducedOrder.msgSize, 32);
+  ASSERT_EQUALS(reducedOrder.timestamp, 86402123456789);
+  ASSERT_EQUALS(reducedOrder.orderRef, 2);
+  ASSERT_EQUALS(reducedOrder.sizeRemaining, 4294967247);
+
+  fh.close();
+  close(fd);
+}
+
+void test_replaced_executed() {
+  const char *inputFile = "test_input/RE.in";
+  const char *outputFile = "test_output/RE.out";
+  std::fstream fh;
+  fh.open(outputFile, std::fstream::in | std::fstream::binary);
+
+  int fd = openFile(inputFile);
+  Parser myParser(19700102, std::string(outputFile));
+  read(myParser, fd);
+
+  AddOrder addOrder;
+  readAddOrder(fh, addOrder);
+  ASSERT_EQUALS(addOrder.size, 100);
+
+  ReplacedOrder replacedOrder;
+  readReplacedOrder(fh, replacedOrder);
+  ASSERT_EQUALS(replacedOrder.msgType[0], 0x00);
+  ASSERT_EQUALS(replacedOrder.msgType[1], 0x04);
+  ASSERT_EQUALS(replacedOrder.msgSize, 48);
+  ASSERT_EQUALS(replacedOrder.timestamp, 86402123456789);
+  ASSERT_EQUALS(replacedOrder.oldOrderRef, 1);
+  ASSERT_EQUALS(replacedOrder.newOrderRef, 2);
+  ASSERT_EQUALS(replacedOrder.newSize, 255);
+  ASSERT_EQUALS(replacedOrder.newPrice, 9);
+
+  ExecutedOrder executedOrder;
+  readExecutedOrder(fh, executedOrder);
+  ASSERT_EQUALS(executedOrder.msgType[0], 0x00);
+  ASSERT_EQUALS(executedOrder.msgType[1], 0x02);
+  ASSERT_EQUALS(executedOrder.msgSize, 40);
+  const char * expectedTicker = "SPY\0\0\0\0\0";
+  assert(std::equal(expectedTicker, expectedTicker+8, executedOrder.ticker));
+  ASSERT_EQUALS(executedOrder.timestamp, 86402123456789);
+  ASSERT_EQUALS(executedOrder.orderRef, 2);
+  ASSERT_EQUALS(executedOrder.size, 255);
+  ASSERT_EQUALS(executedOrder.price, 9);
+
+  fh.close();
+  close(fd);
+}
+
+void test_replaced_replaced() {
+  const char *inputFile = "test_input/RR.in";
+  const char *outputFile = "test_output/RR.out";
+  std::fstream fh;
+  fh.open(outputFile, std::fstream::in | std::fstream::binary);
+
+  int fd = openFile(inputFile);
+  Parser myParser(19700102, std::string(outputFile));
+  read(myParser, fd);
+
+  AddOrder addOrder;
+  readAddOrder(fh, addOrder);
+  ASSERT_EQUALS(addOrder.size, 100);
+
+  ReplacedOrder replacedOrder;
+  readReplacedOrder(fh, replacedOrder);
+  ASSERT_EQUALS(replacedOrder.msgType[0], 0x00);
+  ASSERT_EQUALS(replacedOrder.msgType[1], 0x04);
+  ASSERT_EQUALS(replacedOrder.msgSize, 48);
+  ASSERT_EQUALS(replacedOrder.timestamp, 86402123456789);
+  ASSERT_EQUALS(replacedOrder.oldOrderRef, 1);
+  ASSERT_EQUALS(replacedOrder.newOrderRef, 2);
+  ASSERT_EQUALS(replacedOrder.newSize, 4294967295);
+  ASSERT_EQUALS(replacedOrder.newPrice - 2.147483647e+09, 0);
+
+  ReplacedOrder replacedOrder2;
+  readReplacedOrder(fh, replacedOrder2);
+  ASSERT_EQUALS(replacedOrder2.msgType[0], 0x00);
+  ASSERT_EQUALS(replacedOrder2.msgType[1], 0x04);
+  ASSERT_EQUALS(replacedOrder2.msgSize, 48);
+  ASSERT_EQUALS(replacedOrder2.timestamp, 86402123456789);
+  ASSERT_EQUALS(replacedOrder2.oldOrderRef, 2);
+  ASSERT_EQUALS(replacedOrder2.newOrderRef, 3);
+  ASSERT_EQUALS(replacedOrder2.newSize, 255);
+  ASSERT_EQUALS(replacedOrder2.newPrice, 9);
+
+  fh.close();
+  close(fd);
+}
+
 void test_add_replaced_canceled() {
   const char *inputFile = "test_input/ARC.in";
   const char *outputFile = "test_output/ARC.out";
@@ -339,14 +583,289 @@ void test_add_replaced_canceled() {
   close(fd);
 }
 
+void test_replaced_replaced_executed() {
+  const char *inputFile = "test_input/RRE.in";
+  const char *outputFile = "test_output/RRE.out";
+  std::fstream fh;
+  fh.open(outputFile, std::fstream::in | std::fstream::binary);
+
+  int fd = openFile(inputFile);
+  Parser myParser(19700102, std::string(outputFile));
+  read(myParser, fd);
+
+  AddOrder addOrder;
+  readAddOrder(fh, addOrder);
+  ASSERT_EQUALS(addOrder.size, 100);
+
+  ReplacedOrder replacedOrder;
+  readReplacedOrder(fh, replacedOrder);
+  ASSERT_EQUALS(replacedOrder.msgType[0], 0x00);
+  ASSERT_EQUALS(replacedOrder.msgType[1], 0x04);
+  ASSERT_EQUALS(replacedOrder.msgSize, 48);
+  ASSERT_EQUALS(replacedOrder.timestamp, 86402123456789);
+  ASSERT_EQUALS(replacedOrder.oldOrderRef, 1);
+  ASSERT_EQUALS(replacedOrder.newOrderRef, 2);
+  ASSERT_EQUALS(replacedOrder.newSize, 4294967295);
+  ASSERT_EQUALS(replacedOrder.newPrice - 2.147483647e+09, 0);
+
+  ReplacedOrder replacedOrder2;
+  readReplacedOrder(fh, replacedOrder2);
+  ASSERT_EQUALS(replacedOrder2.msgType[0], 0x00);
+  ASSERT_EQUALS(replacedOrder2.msgType[1], 0x04);
+  ASSERT_EQUALS(replacedOrder2.msgSize, 48);
+  ASSERT_EQUALS(replacedOrder2.timestamp, 86402123456789);
+  ASSERT_EQUALS(replacedOrder2.oldOrderRef, 2);
+  ASSERT_EQUALS(replacedOrder2.newOrderRef, 3);
+  ASSERT_EQUALS(replacedOrder2.newSize, 255);
+  ASSERT_EQUALS(replacedOrder2.newPrice, 9);
+
+  ExecutedOrder executedOrder;
+  readExecutedOrder(fh, executedOrder);
+  ASSERT_EQUALS(executedOrder.msgType[0], 0x00);
+  ASSERT_EQUALS(executedOrder.msgType[1], 0x02);
+  ASSERT_EQUALS(executedOrder.msgSize, 40);
+  const char * expectedTicker = "SPY\0\0\0\0\0";
+  assert(std::equal(expectedTicker, expectedTicker+8, executedOrder.ticker));
+  ASSERT_EQUALS(executedOrder.timestamp, 86402123456789);
+  ASSERT_EQUALS(executedOrder.orderRef, 3);
+  ASSERT_EQUALS(executedOrder.size, 255);
+  ASSERT_EQUALS(executedOrder.price, 9);
+
+  fh.close();
+  close(fd);
+}
+
+void test_replaced_replaced_canceled() {
+  const char *inputFile = "test_input/RRC.in";
+  const char *outputFile = "test_output/RRC.out";
+  std::fstream fh;
+  fh.open(outputFile, std::fstream::in | std::fstream::binary);
+
+  int fd = openFile(inputFile);
+  Parser myParser(19700102, std::string(outputFile));
+  read(myParser, fd);
+
+  AddOrder addOrder;
+  readAddOrder(fh, addOrder);
+  ASSERT_EQUALS(addOrder.size, 100);
+
+  ReplacedOrder replacedOrder;
+  readReplacedOrder(fh, replacedOrder);
+  ASSERT_EQUALS(replacedOrder.msgType[0], 0x00);
+  ASSERT_EQUALS(replacedOrder.msgType[1], 0x04);
+  ASSERT_EQUALS(replacedOrder.msgSize, 48);
+  ASSERT_EQUALS(replacedOrder.timestamp, 86402123456789);
+  ASSERT_EQUALS(replacedOrder.oldOrderRef, 1);
+  ASSERT_EQUALS(replacedOrder.newOrderRef, 2);
+  ASSERT_EQUALS(replacedOrder.newSize, 4294967295);
+  ASSERT_EQUALS(replacedOrder.newPrice - 2.147483647e+09, 0);
+
+  ReplacedOrder replacedOrder2;
+  readReplacedOrder(fh, replacedOrder2);
+  ASSERT_EQUALS(replacedOrder2.msgType[0], 0x00);
+  ASSERT_EQUALS(replacedOrder2.msgType[1], 0x04);
+  ASSERT_EQUALS(replacedOrder2.msgSize, 48);
+  ASSERT_EQUALS(replacedOrder2.timestamp, 86402123456789);
+  ASSERT_EQUALS(replacedOrder2.oldOrderRef, 2);
+  ASSERT_EQUALS(replacedOrder2.newOrderRef, 3);
+  ASSERT_EQUALS(replacedOrder2.newSize, 255);
+  ASSERT_EQUALS(replacedOrder2.newPrice, 9);
+
+  ReducedOrder reducedOrder;
+  readReducedOrder(fh, reducedOrder);
+  ASSERT_EQUALS(reducedOrder.msgType[0], 0x00);
+  ASSERT_EQUALS(reducedOrder.msgType[1], 0x03);
+  ASSERT_EQUALS(reducedOrder.msgSize, 32);
+  ASSERT_EQUALS(reducedOrder.timestamp, 86402123456789);
+  ASSERT_EQUALS(reducedOrder.orderRef, 3);
+  ASSERT_EQUALS(reducedOrder.sizeRemaining, 207);
+
+  fh.close();
+  close(fd);
+}
+
+void test_add_replaced_replaced_executed_single_packet() {
+  const char *inputFile = "test_input/RRE.in";
+  const char *outputFile = "test_output/RRE.out";
+  std::fstream fh;
+  fh.open(outputFile, std::fstream::in | std::fstream::binary);
+
+  int fd = openFile(inputFile);
+  Parser myParser(19700102, std::string(outputFile));
+  read(myParser, fd);
+
+  AddOrder addOrder;
+  readAddOrder(fh, addOrder);
+  ASSERT_EQUALS(addOrder.size, 100);
+
+  ReplacedOrder replacedOrder;
+  readReplacedOrder(fh, replacedOrder);
+  ASSERT_EQUALS(replacedOrder.msgType[0], 0x00);
+  ASSERT_EQUALS(replacedOrder.msgType[1], 0x04);
+  ASSERT_EQUALS(replacedOrder.msgSize, 48);
+  ASSERT_EQUALS(replacedOrder.timestamp, 86402123456789);
+  ASSERT_EQUALS(replacedOrder.oldOrderRef, 1);
+  ASSERT_EQUALS(replacedOrder.newOrderRef, 2);
+  ASSERT_EQUALS(replacedOrder.newSize, 4294967295);
+  ASSERT_EQUALS(replacedOrder.newPrice - 2.147483647e+09, 0);
+
+  ReplacedOrder replacedOrder2;
+  readReplacedOrder(fh, replacedOrder2);
+  ASSERT_EQUALS(replacedOrder2.msgType[0], 0x00);
+  ASSERT_EQUALS(replacedOrder2.msgType[1], 0x04);
+  ASSERT_EQUALS(replacedOrder2.msgSize, 48);
+  ASSERT_EQUALS(replacedOrder2.timestamp, 86402123456789);
+  ASSERT_EQUALS(replacedOrder2.oldOrderRef, 2);
+  ASSERT_EQUALS(replacedOrder2.newOrderRef, 3);
+  ASSERT_EQUALS(replacedOrder2.newSize, 255);
+  ASSERT_EQUALS(replacedOrder2.newPrice, 9);
+
+  ExecutedOrder executedOrder;
+  readExecutedOrder(fh, executedOrder);
+  ASSERT_EQUALS(executedOrder.msgType[0], 0x00);
+  ASSERT_EQUALS(executedOrder.msgType[1], 0x02);
+  ASSERT_EQUALS(executedOrder.msgSize, 40);
+  const char * expectedTicker = "SPY\0\0\0\0\0";
+  assert(std::equal(expectedTicker, expectedTicker+8, executedOrder.ticker));
+  ASSERT_EQUALS(executedOrder.timestamp, 86402123456789);
+  ASSERT_EQUALS(executedOrder.orderRef, 3);
+  ASSERT_EQUALS(executedOrder.size, 255);
+  ASSERT_EQUALS(executedOrder.price, 9);
+
+  fh.close();
+  close(fd);
+}
+
+void test_add_replaced_replaced_executed_straddled() {
+  const char *inputFile = "test_input/ARRE_straddled.in";
+  const char *outputFile = "test_output/ARRE_straddled.out";
+  std::fstream fh;
+  fh.open(outputFile, std::fstream::in | std::fstream::binary);
+
+  int fd = openFile(inputFile);
+  Parser myParser(19700102, std::string(outputFile));
+  read(myParser, fd);
+
+  AddOrder addOrder;
+  readAddOrder(fh, addOrder);
+  ASSERT_EQUALS(addOrder.size, 100);
+
+  ReplacedOrder replacedOrder;
+  readReplacedOrder(fh, replacedOrder);
+  ASSERT_EQUALS(replacedOrder.msgType[0], 0x00);
+  ASSERT_EQUALS(replacedOrder.msgType[1], 0x04);
+  ASSERT_EQUALS(replacedOrder.msgSize, 48);
+  ASSERT_EQUALS(replacedOrder.timestamp, 86402123456789);
+  ASSERT_EQUALS(replacedOrder.oldOrderRef, 1);
+  ASSERT_EQUALS(replacedOrder.newOrderRef, 2);
+  ASSERT_EQUALS(replacedOrder.newSize, 4294967295);
+  ASSERT_EQUALS(replacedOrder.newPrice - 2.147483647e+09, 0);
+
+  ReplacedOrder replacedOrder2;
+  readReplacedOrder(fh, replacedOrder2);
+  ASSERT_EQUALS(replacedOrder2.msgType[0], 0x00);
+  ASSERT_EQUALS(replacedOrder2.msgType[1], 0x04);
+  ASSERT_EQUALS(replacedOrder2.msgSize, 48);
+  ASSERT_EQUALS(replacedOrder2.timestamp, 86402123456789);
+  ASSERT_EQUALS(replacedOrder2.oldOrderRef, 2);
+  ASSERT_EQUALS(replacedOrder2.newOrderRef, 3);
+  ASSERT_EQUALS(replacedOrder2.newSize, 255);
+  ASSERT_EQUALS(replacedOrder2.newPrice, 9);
+
+  ExecutedOrder executedOrder;
+  readExecutedOrder(fh, executedOrder);
+  ASSERT_EQUALS(executedOrder.msgType[0], 0x00);
+  ASSERT_EQUALS(executedOrder.msgType[1], 0x02);
+  ASSERT_EQUALS(executedOrder.msgSize, 40);
+  const char * expectedTicker = "SPY\0\0\0\0\0";
+  assert(std::equal(expectedTicker, expectedTicker+8, executedOrder.ticker));
+  ASSERT_EQUALS(executedOrder.timestamp, 86402123456789);
+  ASSERT_EQUALS(executedOrder.orderRef, 3);
+  ASSERT_EQUALS(executedOrder.size, 255);
+  ASSERT_EQUALS(executedOrder.price, 9);
+
+  fh.close();
+  close(fd);
+}
+
+void test_add_replaced_replaced_executed_out_of_order() {
+  const char *inputFile = "test_input/ARRE_out_of_order.in";
+  const char *outputFile = "test_output/ARRE_out_of_order.out";
+
+  int fd = openFile(inputFile);
+  Parser myParser(19700102, std::string(outputFile));
+  read(myParser, fd);
+  close(fd);
+
+  std::fstream fh;
+  fh.open(outputFile, std::fstream::in | std::fstream::binary);
+  
+  AddOrder addOrder;
+  readAddOrder(fh, addOrder);
+  ASSERT_EQUALS(addOrder.size, 100);
+
+  ReplacedOrder replacedOrder;
+  readReplacedOrder(fh, replacedOrder);
+  ASSERT_EQUALS(replacedOrder.msgType[0], 0x00);
+  ASSERT_EQUALS(replacedOrder.msgType[1], 0x04);
+  ASSERT_EQUALS(replacedOrder.msgSize, 48);
+  ASSERT_EQUALS(replacedOrder.timestamp, 86402123456789);
+  ASSERT_EQUALS(replacedOrder.oldOrderRef, 1);
+  ASSERT_EQUALS(replacedOrder.newOrderRef, 2);
+  ASSERT_EQUALS(replacedOrder.newSize, 4294967295);
+  ASSERT_EQUALS(replacedOrder.newPrice - 2.147483647e+09, 0);
+
+  ReplacedOrder replacedOrder2;
+  readReplacedOrder(fh, replacedOrder2);
+  ASSERT_EQUALS(replacedOrder2.msgType[0], 0x00);
+  ASSERT_EQUALS(replacedOrder2.msgType[1], 0x04);
+  ASSERT_EQUALS(replacedOrder2.msgSize, 48);
+  ASSERT_EQUALS(replacedOrder2.timestamp, 86402123456789);
+  ASSERT_EQUALS(replacedOrder2.oldOrderRef, 2);
+  ASSERT_EQUALS(replacedOrder2.newOrderRef, 3);
+  ASSERT_EQUALS(replacedOrder2.newSize, 255);
+  ASSERT_EQUALS(replacedOrder2.newPrice, 9);
+
+  ExecutedOrder executedOrder;
+  readExecutedOrder(fh, executedOrder);
+  ASSERT_EQUALS(executedOrder.msgType[0], 0x00);
+  ASSERT_EQUALS(executedOrder.msgType[1], 0x02);
+  ASSERT_EQUALS(executedOrder.msgSize, 40);
+  const char * expectedTicker = "SPY\0\0\0\0\0";
+  assert(std::equal(expectedTicker, expectedTicker+8, executedOrder.ticker));
+  ASSERT_EQUALS(executedOrder.timestamp, 86402123456789);
+  ASSERT_EQUALS(executedOrder.orderRef, 3);
+  ASSERT_EQUALS(executedOrder.size, 255);
+  ASSERT_EQUALS(executedOrder.price, 9);
+
+  // fh.close();
+}
+
+
+
 int main(int argc, char **argv) {
   // TODO: create output dir first.
-  test_basic();
-  test_add_execute();
-  test_add_canceled();
-  test_add_canceled_canceled();
-  test_add_replaced();
-  test_add_replaced_canceled();
+  // test_basic();
+  // test_add_execute();
+  // test_add_canceled();
+  // test_add_canceled_canceled();
+  // test_add_canceled_surplus();
+  // test_add_executed_canceled();
+  // test_add_executed_surplus();
+  // test_add_executed_executed();
+  // test_add_canceled_executed();
+  // test_add_replaced();
+  // test_add_replaced_canceled();
+  // test_replaced_canceled();
+  // test_replaced_executed();
+  // test_replaced_replaced();
+  // test_replaced_replaced_executed();
+  // test_replaced_replaced_canceled();
+
+  // test_add_replaced_replaced_executed_single_packet();
+  // test_add_replaced_replaced_executed_straddled();
+  test_add_replaced_replaced_executed_out_of_order();
+
 
   // TODO:
   // Test add, test reduce, test cancel, test reduce. test replace, test reduce of replaced order.
