@@ -39,15 +39,7 @@ Parser::Parser(int date, const std::string &outputFilename) {
   outfile.close();
 }
 
-void Parser::enqueuePayloads(const char *buf, size_t len) {
-  // Payload of current packet can be queued for processing.
-  for( int i = 6; i < static_cast<int>(len); i++) {
-    q.push(buf[i]);
-  }
-  sequencePosition++;
-
-  // Payload bytes of previously skipped packets 
-  // succeed the sequence and can be queued.
+void Parser::catchupSequencePayloads() {
   auto entry = packets.find(sequencePosition);
   while(entry != packets.end()) {
     const char* skippedPacketBytes = entry->second;
@@ -72,25 +64,29 @@ void Parser::processQueue() {
   while(q.size() >= 34 ||
       (q.size() >= 33 && q.front() != 'A') ||
       (q.size() >= 21 && (q.front() == 'X' || q.front() == 'E'))) {
-    char msgType = q.front();
-    if(msgType == 'A') {
-      popNBytes(34, &in);
-      mapAdd(in, &out);
-      outfile.write(out, 44);
-    } else if(msgType == 'E') {
-      popNBytes(21, &in);
-      mapExecuted(in, &out);
-      outfile.write(out, 40);
-    } else if(msgType == 'X') {
-      popNBytes(21, &in);
-      mapReduced(in, &out);
-      outfile.write(out, 32);
-    } else if(msgType == 'R') {
-      popNBytes(33, &in);
-      mapReplaced(in, &out);
-      outfile.write(out, 48);
-    } else {
-      throw std::runtime_error("Unexpected message type");
+    switch(q.front()) {
+      case 'A':
+        popNBytes(34, &in);
+        mapAdd(in, &out);
+        outfile.write(out, 44);
+        break;
+      case 'E':
+        popNBytes(21, &in);
+        mapExecuted(in, &out);
+        outfile.write(out, 40);
+        break;
+      case 'X':
+        popNBytes(21, &in);
+        mapReduced(in, &out);
+        outfile.write(out, 32);
+        break;
+      case 'R':
+        popNBytes(33, &in);
+        mapReplaced(in, &out);
+        outfile.write(out, 48);
+        break;
+      default:
+        throw std::runtime_error("Unexpected message type");
     }
   }
 
@@ -103,7 +99,7 @@ void Parser::onUDPPacket(const char *buffer, size_t len) {
       throw std::invalid_argument("Packet must be atleast 6 bytes");
   }
 
-  // Copy the buffer.
+  // Copy the buffer since may be mutated.
   char *buf = new char[len];
   for(int i = 0; i < static_cast<int>(len); i++) {
     buf[i] = buffer[i];
@@ -111,21 +107,31 @@ void Parser::onUDPPacket(const char *buffer, size_t len) {
 
   uint16_t packetSize = readBigEndianUint16(buf, 0);
   if(static_cast<int>(packetSize) != static_cast<int>(len)) {
-      throw std::invalid_argument("Packet size does match buffer length.");
+    throw std::invalid_argument("Packet size does match buffer length.");
   }
   
   uint32_t sequenceNumber = readBigEndianUint32(buf, 2);
+
   // Packet arrived "early".
   if (sequenceNumber > sequencePosition) {
-    // Store for when the gap in packet sequence is closed.
-    packets[sequenceNumber] = buf;
+    packets[sequenceNumber] = buf; 
+    return;
   } else if (sequenceNumber < sequencePosition) {
     // Packet already arrived and processed.
     return;
-  } else {
-    enqueuePayloads(buf, len);
-    processQueue();
   }
+
+  // Enqueue payload of current packet.
+  for( int i = 6; i < static_cast<int>(len); i++) {
+    q.push(buf[i]);
+  }
+  sequencePosition++;
+
+  // Catchup with packets continue sequence, but arrived early.
+  catchupSequencePayloads();
+
+  // Map bytes / messages that are queued.
+  processQueue();
 }
 
 uint64_t Parser::readBigEndianUint64(const char *in, int offset) {

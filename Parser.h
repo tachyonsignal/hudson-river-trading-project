@@ -46,8 +46,8 @@ class Parser {
   uint16_t readBigEndianUint16(const char *buf, int offset);
 
   // Sub-routines of #onUDPPacket.
-  // Enqueue payload bytes, catching up sequence of skipped packets.
-  void enqueuePayloads(const char *buf, size_t len);
+  // Enqueue packets that arrived early if sequence has since connected. 
+  void catchupSequencePayloads();
   void processQueue();
 
   public:
