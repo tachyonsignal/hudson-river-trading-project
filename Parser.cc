@@ -25,7 +25,6 @@ Parser::Parser(int date, const std::string &outputFilename) {
   // Copied from http://www.cplusplus.com/reference/ctime/mktime/.
   time_t rawtime;
   struct tm * timeinfo = localtime ( &rawtime );
-  std::cout << timeinfo << "\n";
   timeinfo->tm_year = ( date / 1E4) - 1900; // Years since 1900.
   timeinfo->tm_mon = month - 1; // Months are 0-indexed.
   timeinfo->tm_mday = day;
@@ -47,7 +46,6 @@ void Parser::enqueuePayloads(const char *buf, size_t len) {
   }
   sequencePosition++;
 
-  printf("Sequence pos: %llu\n", sequencePosition);
   // Payload bytes of previously skipped packets 
   // succeed the sequence and can be queued.
   auto entry = packets.find(sequencePosition);
@@ -57,7 +55,6 @@ void Parser::enqueuePayloads(const char *buf, size_t len) {
 
     if(skippedPacketSize == 39) {
       unsigned long long newOrderRef = readBigEndianUint64(buf, 23);
-      printf("Enqueuing new Order ref: %llu\n", newOrderRef);
     }
 
     
@@ -77,7 +74,6 @@ void Parser::processQueue() {
   while(q.size() >= 34 ||
       (q.size() >= 33 && q.front() != 'A') ||
       (q.size() >= 21 && (q.front() == 'X' || q.front() == 'E'))) {
-    printf("Entering loop %llu with q.front(): %c\n", q.size(), q.front());
     char msgType = q.front();
     if(msgType == 'A') {
       char* in = popNBytes(34);
@@ -97,7 +93,6 @@ void Parser::processQueue() {
     } else if(msgType == 'R') {
       char* in = popNBytes(33);
       unsigned long long newOrderRef = readBigEndianUint64(in, 17);
-      printf("new Order Ref: %llu\n", newOrderRef);
       char* out = mapReplaced(in);
       outfile.write(out, 48);
       delete[] in, delete[] out;
@@ -126,20 +121,16 @@ void Parser::onUDPPacket(const char *buf3, size_t len) {
   
   if(packetSize == 39) {
     unsigned long long newOrderRef = readBigEndianUint64(buf, 23);
-    printf("Original new Order ref: %llu\n", newOrderRef);
   }
   unsigned int sequenceNumber = readBigEndianUint32(buf, 2);
-  printf("Packet sequence number %zu.\n", sequenceNumber);
   // Packet arrived "early".
   if (sequenceNumber > sequencePosition) {
-    printf("\tStashing the packet %lluu\n", sequenceNumber);
     // Store for when the gap in packet sequence is closed.
     packets[sequenceNumber] = buf;
   } else if (sequenceNumber < sequencePosition) {
     // Packet already arrived and processed.
     return;
   } else {
-    printf("\t Processing packet %llu\n, ", sequenceNumber);
     enqueuePayloads(buf, len);
     processQueue();
   }
@@ -406,8 +397,6 @@ char* Parser::mapReplaced(const char *in) {
     out[40 + i] = priceBytes[i];
   }
 
-  printf("Adding Reduced Order ref %llu\n", newOrderRef);
-  printf("Adding Old Order ref %llu\n", orderRef);
   orders[newOrderRef] = {
     o.ticker,
     priceDouble,
