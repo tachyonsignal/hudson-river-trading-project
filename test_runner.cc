@@ -15,6 +15,8 @@
 #include <assert.h>     /* assert */
 #include <cmath>        // std::abs
 
+using namespace std;
+
 // https://stackoverflow.com/questions/2193544/how-to-print-additional-information-when-assert-fails
 #define ASSERT_EQUALS(left,right) { if(!((left) == (right))){ std::cerr << "ASSERT FAILED: " << #left << "==" << #right << " @ " << __FILE__ << " (" << __LINE__ << "). " << #left << "=" << (left) << "; " << #right << "=" << (right) << std::endl; } }
 
@@ -916,6 +918,10 @@ void test_add_replaced_replaced_executed_straddled_out_of_order() {
 
 
 int main(int argc, char **argv) {
+  if (mkdir("./test_output", 0755) != 0) {
+    cout << "Please create a directory ./test_output first." << endl;
+  }
+
   // Test messages
   test_basic();
   test_add_execute();
