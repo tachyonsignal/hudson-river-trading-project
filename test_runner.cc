@@ -841,6 +841,58 @@ void test_add_replaced_replaced_executed_out_of_order() {
   // fh.close();
 }
 
+void test_add_replaced_replaced_executed_straddled_out_of_order() {
+  const char *inputFile = "test_input/ARRE_straddled_out_of_order.in";
+  const char *outputFile = "test_output/ARRE_straddled_out_of_order.out";
+
+  int fd = openFile(inputFile);
+  Parser myParser(19700102, std::string(outputFile));
+  read(myParser, fd);
+  close(fd);
+
+  std::fstream fh;
+  fh.open(outputFile, std::fstream::in | std::fstream::binary);
+  
+  AddOrder addOrder;
+  readAddOrder(fh, addOrder);
+  ASSERT_EQUALS(addOrder.size, 100);
+
+  ReplacedOrder replacedOrder;
+  readReplacedOrder(fh, replacedOrder);
+  ASSERT_EQUALS(replacedOrder.msgType[0], 0x00);
+  ASSERT_EQUALS(replacedOrder.msgType[1], 0x04);
+  ASSERT_EQUALS(replacedOrder.msgSize, 48);
+  ASSERT_EQUALS(replacedOrder.timestamp, 86402123456789);
+  ASSERT_EQUALS(replacedOrder.oldOrderRef, 1);
+  ASSERT_EQUALS(replacedOrder.newOrderRef, 2);
+  ASSERT_EQUALS(replacedOrder.newSize, 4294967295);
+  ASSERT_EQUALS(replacedOrder.newPrice - 2.147483647e+09, 0);
+
+  ReplacedOrder replacedOrder2;
+  readReplacedOrder(fh, replacedOrder2);
+  ASSERT_EQUALS(replacedOrder2.msgType[0], 0x00);
+  ASSERT_EQUALS(replacedOrder2.msgType[1], 0x04);
+  ASSERT_EQUALS(replacedOrder2.msgSize, 48);
+  ASSERT_EQUALS(replacedOrder2.timestamp, 86402123456789);
+  ASSERT_EQUALS(replacedOrder2.oldOrderRef, 2);
+  ASSERT_EQUALS(replacedOrder2.newOrderRef, 3);
+  ASSERT_EQUALS(replacedOrder2.newSize, 255);
+  ASSERT_EQUALS(replacedOrder2.newPrice, 9);
+
+  ExecutedOrder executedOrder;
+  readExecutedOrder(fh, executedOrder);
+  ASSERT_EQUALS(executedOrder.msgType[0], 0x00);
+  ASSERT_EQUALS(executedOrder.msgType[1], 0x02);
+  ASSERT_EQUALS(executedOrder.msgSize, 40);
+  const char * expectedTicker = "SPY\0\0\0\0\0";
+  assert(std::equal(expectedTicker, expectedTicker+8, executedOrder.ticker));
+  ASSERT_EQUALS(executedOrder.timestamp, 86402123456789);
+  ASSERT_EQUALS(executedOrder.orderRef, 3);
+  ASSERT_EQUALS(executedOrder.size, 255);
+  ASSERT_EQUALS(executedOrder.price, 9);
+
+  // fh.close();
+}
 
 
 int main(int argc, char **argv) {
@@ -864,7 +916,8 @@ int main(int argc, char **argv) {
 
   // test_add_replaced_replaced_executed_single_packet();
   // test_add_replaced_replaced_executed_straddled();
-  test_add_replaced_replaced_executed_out_of_order();
+  // test_add_replaced_replaced_executed_out_of_order();
+  test_add_replaced_replaced_executed_straddled_out_of_order();
 
 
   // TODO:
