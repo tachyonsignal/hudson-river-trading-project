@@ -27,7 +27,7 @@ class Parser {
   char* popNBytes(int n, char** buf);
 
   // Stash packets that arrive "early" / out of sequence, keyed by seq number.
-  std::unordered_map<uint16_t, const char*> packets;
+  std::unordered_map<uint16_t, const char*> earlyPackets;
 
   // Track Add Orders and their remaining order size.
   std::unordered_map<uint64_t, Order_t> orders;

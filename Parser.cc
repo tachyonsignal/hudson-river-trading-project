@@ -40,15 +40,19 @@ Parser::Parser(int date, const std::string &outputFilename) {
 }
 
 void Parser::catchupSequencePayloads() {
-  auto entry = packets.find(sequencePosition);
-  while(entry != packets.end()) {
-    const char* skippedPacketBytes = entry->second;
-    uint16_t skippedPacketSize = readBigEndianUint16(skippedPacketBytes, 0);
-    for( int i = 6; i < skippedPacketSize; i++) {
-      q.push(skippedPacketBytes[i]);
+  // Lookup if there is a packet succeeding the sequence that
+  // arrived early.
+  auto entry = earlyPackets.find(sequencePosition);
+  while(entry != earlyPackets.end()) {
+    const char* bytes = entry->second;
+    uint16_t packetSize = readBigEndianUint16(bytes, 0);
+    // Enqueue the payload.
+    for( int i = 6; i < packetSize; i++) {
+      q.push(bytes[i]);
     }
+
     sequencePosition++;
-    entry = packets.find(sequencePosition);
+    entry = earlyPackets.find(sequencePosition);
   }
 }
 
@@ -112,9 +116,9 @@ void Parser::onUDPPacket(const char *buffer, size_t len) {
   
   uint32_t sequenceNumber = readBigEndianUint32(buf, 2);
 
-  // Packet arrived "early".
+  // Packet arrived "early", stash for later.
   if (sequenceNumber > sequencePosition) {
-    packets[sequenceNumber] = buf; 
+    earlyPackets[sequenceNumber] = buf; 
     return;
   } else if (sequenceNumber < sequencePosition) {
     // Packet already arrived and processed.
@@ -204,24 +208,23 @@ void Parser::mapAdd(const char *in, char ** outPtr) {
   }
 
   // Size. Offset 32, length 4.
-  uint32_t sizeInt = readBigEndianUint32(in, 18);
-  char* sizeBytes = reinterpret_cast<char*>(&sizeInt);
+  uint32_t size = readBigEndianUint32(in, 18);
+  char* sizeBytes = reinterpret_cast<char*>(&size);
   for(int i = 0 ; i < 4; i++) {
     out[32 + i] = sizeBytes[i];
   }
 
   // Price. Offset 36, length 8.
-  int32_t priceInt = readBigEndianUint32(in, 30);
-  double priceDouble = double(priceInt);
-  char* priceBytes = reinterpret_cast<char*>(&priceDouble);
+  double price = double(readBigEndianUint32(in, 30));
+  char* priceBytes = reinterpret_cast<char*>(&price);
   for(int i = 0 ; i < 8; i++) {
     out[36 + i] = priceBytes[i];
   }
 
   orders[orderRef] = {
     ticker,
-    priceDouble, 
-    sizeInt
+    price, 
+    size
   };
 }
 
@@ -362,15 +365,14 @@ void Parser::mapReplaced(const char *in, char ** outPtr) {
   }
 
   // New size. Offset 36, length 4.
-  uint32_t sizeInt = readBigEndianUint32(in, 25);
-  char* sizeBytes = reinterpret_cast<char*>(&sizeInt);
+  uint32_t size = readBigEndianUint32(in, 25);
+  char* sizeBytes = reinterpret_cast<char*>(&size);
   for(int i = 0 ; i < 4; i++) {
     out[36 + i] = sizeBytes[i];
   }
 
-  int32_t priceInt = readBigEndianUint32(in, 29);
-  double priceDouble = double(priceInt);
-  char* priceBytes = reinterpret_cast<char*>(&priceDouble);
+  double price = double(readBigEndianUint32(in, 29));
+  char* priceBytes = reinterpret_cast<char*>(&price);
   // On x86, the bytes of the double are in little-endian order.
   for(int i = 0 ; i < 8 ; i++) {
     out[40 + i] = priceBytes[i];
@@ -378,8 +380,8 @@ void Parser::mapReplaced(const char *in, char ** outPtr) {
 
   orders[newOrderRef] = {
     o->ticker,
-    priceDouble,
-    sizeInt
+    price,
+    size
   };
 }
 
