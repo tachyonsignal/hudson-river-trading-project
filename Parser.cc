@@ -32,7 +32,7 @@ Parser::Parser(int date, const std::string &outputFilename) {
   timeinfo->tm_min = 0;
   timeinfo->tm_sec = 0;
   unsigned int epochToMidnightLocalSeconds = mktime (timeinfo);
-  epochToMidnightLocalNanos = 1000000000 * (unsigned long long) epochToMidnightLocalSeconds;
+  epochToMidnightLocalNanos = 1000000000 * (uint64_t) epochToMidnightLocalSeconds;
   // Empty the file.
   std::ofstream outfile;
   outfile.open(outputFilename);
@@ -173,8 +173,8 @@ void Parser::mapAdd(const char *in, char ** outPtr) {
   }
 
   // Timestamp field. 
-  unsigned long long timestamp = readBigEndianUint64(in, 1);
-  unsigned long long nanosSinceEpoch = epochToMidnightLocalNanos + timestamp; 
+  uint64_t timestamp = readBigEndianUint64(in, 1);
+  uint64_t nanosSinceEpoch = epochToMidnightLocalNanos + timestamp; 
 
   char* timeLittleEndianBytes = reinterpret_cast<char*>(&nanosSinceEpoch);
   for(int i = 0 ; i < 8; i++) {
@@ -182,7 +182,7 @@ void Parser::mapAdd(const char *in, char ** outPtr) {
   }
 
   // Copy Order Reference Number, write in little endian.
-  unsigned long long orderRef = readBigEndianUint64(in, 9);
+  uint64_t orderRef = readBigEndianUint64(in, 9);
   char* orderRefLittleEndianBytes = reinterpret_cast<char*>(&orderRef);
   for(int i = 0 ; i < 8; i++) {
     out[20 + i] = orderRefLittleEndianBytes[i];
@@ -218,7 +218,7 @@ void Parser::mapAdd(const char *in, char ** outPtr) {
   };
 }
 
-Order_t* Parser::lookupOrder(unsigned long long orderRef) {
+Order_t* Parser::lookupOrder(uint64_t orderRef) {
   auto order  = orders.find(orderRef);
   if(order == orders.end()) {
     throw std::runtime_error("Order ref was not found: " +  std::to_string(orderRef));
@@ -234,15 +234,15 @@ void Parser::mapExecuted(const char *in, char** outPtr) {
   out[2] = 0x28, out[3] = 0x00;
 
   // Lookup add order using order ref.
-  unsigned long long orderRef = readBigEndianUint64(in, 9);
+  uint64_t orderRef = readBigEndianUint64(in, 9);
   Order_t* o = lookupOrder(orderRef);
   // Stock ticker. Offset 4, length 8.
   for(int i = 0 ; i < 8; i++) {
     out[4 + i] = o->ticker[i];
   }
   
-  unsigned long long timestamp = readBigEndianUint64(in, 1);
-  unsigned long long nanosSinceEpoch = epochToMidnightLocalNanos + timestamp; 
+  uint64_t timestamp = readBigEndianUint64(in, 1);
+  uint64_t nanosSinceEpoch = epochToMidnightLocalNanos + timestamp; 
   char* timeBytes = reinterpret_cast<char*>(&nanosSinceEpoch);
   for(int i = 0 ; i < 8; i++) {
     out[12+i] = timeBytes[i];
@@ -284,15 +284,15 @@ void Parser::mapReduced(const char* in, char** outPtr) {
   out[2] = 0x20, out[3] = 0x00;
 
   // Lookup add order using order ref.
-  unsigned long long orderRef = readBigEndianUint64(in, 9);
+  uint64_t orderRef = readBigEndianUint64(in, 9);
   Order_t* o = lookupOrder(orderRef);
   for(int i = 0 ; i < 8; i++) {
     out[4+i] = o->ticker[i];
   }
 
   // Timestamp, offset 12, length 8.
-  unsigned long long timestamp = readBigEndianUint64(in, 1);
-  unsigned long long nanosSinceEpoch = epochToMidnightLocalNanos + timestamp; 
+  uint64_t timestamp = readBigEndianUint64(in, 1);
+  uint64_t nanosSinceEpoch = epochToMidnightLocalNanos + timestamp; 
   char* timeBytes = reinterpret_cast<char*>(&nanosSinceEpoch);
   for(int i = 0 ; i < 8; i++) {
     out[12+i] = timeBytes[i];
@@ -324,7 +324,7 @@ void Parser::mapReplaced(const char *in, char ** outPtr) {
   out[2] = 0x30, out[3] = 0x00;
   
   // Lookup add order using order ref.
-  unsigned long long orderRef = readBigEndianUint64(in, 9);
+  uint64_t orderRef = readBigEndianUint64(in, 9);
   Order_t* o = lookupOrder(orderRef);
   // Order's size should go to 0.
   o->size = 0;
@@ -334,8 +334,8 @@ void Parser::mapReplaced(const char *in, char ** outPtr) {
     out[4+i] = o->ticker[i];
   }
 
-  unsigned long long timestamp = readBigEndianUint64(in, 1);
-  unsigned long long nanosSinceEpoch = epochToMidnightLocalNanos + timestamp; 
+  uint64_t timestamp = readBigEndianUint64(in, 1);
+  uint64_t nanosSinceEpoch = epochToMidnightLocalNanos + timestamp; 
   char* timeBytes = reinterpret_cast<char*>(&nanosSinceEpoch);
   for(int i = 0 ; i < 8; i++) {
     out[12+i] = timeBytes[i];
@@ -348,7 +348,7 @@ void Parser::mapReplaced(const char *in, char ** outPtr) {
   }
 
   // New order reference number. offset 28, length 8.
-  unsigned long long newOrderRef = readBigEndianUint64(in, 17);
+  uint64_t newOrderRef = readBigEndianUint64(in, 17);
   char* newOrderRefBytes = reinterpret_cast<char*>(&newOrderRef);
   for(int i = 0 ; i < 8; i++) {
     out[28 + i] = newOrderRefBytes[i];
