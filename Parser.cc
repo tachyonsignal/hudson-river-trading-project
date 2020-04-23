@@ -218,13 +218,12 @@ void Parser::mapAdd(const char *in, char ** outPtr) {
   };
 }
 
-Order_t Parser::lookupOrder(unsigned long long orderRef) {
+Order_t* Parser::lookupOrder(unsigned long long orderRef) {
   auto order  = orders.find(orderRef);
   if(order == orders.end()) {
-    // TODO: Throw with order ref #.
     throw std::runtime_error("Order ref was not found: " +  std::to_string(orderRef));
   }
-  return order->second;
+  return &(order->second);
 }
 
 void Parser::mapExecuted(const char *in, char** outPtr) {
@@ -236,10 +235,10 @@ void Parser::mapExecuted(const char *in, char** outPtr) {
 
   // Lookup add order using order ref.
   unsigned long long orderRef = readBigEndianUint64(in, 9);
-  Order_t o = lookupOrder(orderRef);
+  Order_t* o = lookupOrder(orderRef);
   // Stock ticker. Offset 4, length 8.
   for(int i = 0 ; i < 8; i++) {
-    out[4 + i] = o.ticker[i];
+    out[4 + i] = o->ticker[i];
   }
   
   unsigned long long timestamp = readBigEndianUint64(in, 1);
@@ -258,22 +257,18 @@ void Parser::mapExecuted(const char *in, char** outPtr) {
   // Size. Offset 28, length 4.
   unsigned int sizeInt = readBigEndianUint32(in, 17);
   // Update remaining order size.
-  if(sizeInt > o.size) {
+  if(sizeInt > o->size) {
     // Can execute at most the remaining size.
-    sizeInt = o.size;
+    sizeInt = o->size;
   }
-  unsigned int remainingSize = o.size - sizeInt;
-  orders[orderRef] = {
-    o.ticker,
-    o.price, 
-    remainingSize
-  };
+  unsigned int remainingSize = o->size - sizeInt;
+  o->size =  remainingSize;
   char* sizeBytes = reinterpret_cast<char*>(&sizeInt);
   for(int i = 0 ; i < 4; i++) {
     out[28 + i] = sizeBytes[i];
   } 
 
-  char* priceBytes = reinterpret_cast<char*>(&o.price);
+  char* priceBytes = reinterpret_cast<char*>(&o->price);
   for(int i = 0 ; i < 8; i++) {
     // On x86, the bytes of the double are in little-endian order.
     out[32 + i] = priceBytes[i];
@@ -290,9 +285,9 @@ void Parser::mapReduced(const char* in, char** outPtr) {
 
   // Lookup add order using order ref.
   unsigned long long orderRef = readBigEndianUint64(in, 9);
-  Order_t o = lookupOrder(orderRef);
+  Order_t* o = lookupOrder(orderRef);
   for(int i = 0 ; i < 8; i++) {
-    out[4+i] = o.ticker[i];
+    out[4+i] = o->ticker[i];
   }
 
   // Timestamp, offset 12, length 8.
@@ -311,12 +306,8 @@ void Parser::mapReduced(const char* in, char** outPtr) {
   
   // Size remaining. Offset 28, length 4.
   uint32_t sizeInt = readBigEndianUint32(in, 17);
-  uint32_t remainingSize = sizeInt > o.size ? 0 : o.size - sizeInt;
-  orders[orderRef] = {
-    o.ticker,
-    o.price, 
-    remainingSize
-  };
+  uint32_t remainingSize = sizeInt > o->size ? 0 : o->size - sizeInt;
+  o->size = remainingSize;
 
   char* sizeBytes = reinterpret_cast<char*>(&remainingSize);
   for(int i = 0 ; i < 4; i++) {
@@ -334,18 +325,13 @@ void Parser::mapReplaced(const char *in, char ** outPtr) {
   
   // Lookup add order using order ref.
   unsigned long long orderRef = readBigEndianUint64(in, 9);
-  Order_t o = lookupOrder(orderRef);
-  // TODO: mutate existing order in-place.
+  Order_t* o = lookupOrder(orderRef);
   // Order's size should go to 0.
-  orders[orderRef] = {
-    o.ticker,
-    o.price, 
-    0
-  };
+  o->size = 0;
 
   // Stock ticker. Offset 4, length 8.
   for(int i = 0 ; i < 8; i++) {
-    out[4+i] = o.ticker[i];
+    out[4+i] = o->ticker[i];
   }
 
   unsigned long long timestamp = readBigEndianUint64(in, 1);
@@ -384,7 +370,7 @@ void Parser::mapReplaced(const char *in, char ** outPtr) {
   }
 
   orders[newOrderRef] = {
-    o.ticker,
+    o->ticker,
     priceDouble,
     sizeInt
   };

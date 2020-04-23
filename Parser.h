@@ -31,7 +31,7 @@ class Parser {
   // Track Add Orders and their remaining order size.
   std::unordered_map<unsigned long long, Order_t> orders;
   // Utility to abstract away unordered_map boilerplate, lacking ::contains.
-  Order_t lookupOrder(unsigned long long orderRef);
+  Order_t* lookupOrder(unsigned long long orderRef);
 
   // Functions that map message from input to output message in second buffer.
   void mapAdd(const char* in, char** outPtr);
