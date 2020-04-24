@@ -236,6 +236,7 @@ void Parser::mapAdd(const char *in, char ** outPtr) {
   memcpy(&out[32], &a.size, sizeof(a.size));
   memcpy(&out[36], &a.price, sizeof(a.price));
 
+  // TODO delete struct.
   orders[orderRef] = {
     ticker,
     price, 
@@ -252,32 +253,23 @@ Order_t* Parser::lookupOrder(uint64_t orderRef) {
 }
 
 void Parser::mapExecuted(const char *in, char** outPtr) {
+  ExecutedOrder order;
   char* out = *outPtr;
-  // Msg type. Offset 0, length 2.
-  out[0] = 0x00, out[1] = 0x02;
-  // Msg size. Offset 2, length 2.
-  out[2] = 0x28, out[3] = 0x00;
+  
+  
+  char msgType[] = { 0x00, 0x02 };
+  memcpy(order.msgType, msgType, 2);
+
+  order.msgSize = 40;
 
   // Lookup add order using order ref.
   uint64_t orderRef = readBigEndianUint64(in, 9);
+  order.orderRef = orderRef;
   Order_t* o = lookupOrder(orderRef);
-  // Stock ticker. Offset 4, length 8.
-  for(int i = 0 ; i < 8; i++) {
-    out[4 + i] = o->ticker[i];
-  }
-  
-  uint64_t timestamp = readBigEndianUint64(in, 1);
-  uint64_t nanosSinceEpoch = epochToMidnightLocalNanos + timestamp; 
-  char* timeBytes = reinterpret_cast<char*>(&nanosSinceEpoch);
-  for(int i = 0 ; i < 8; i++) {
-    out[12+i] = timeBytes[i];
-  }
 
-  // Order reference number. Offset 20, length 8.
-  char* orderRefLittleEndianBytes = reinterpret_cast<char*>(&orderRef);
-  for(int i = 0 ; i < 8; i++) {
-    out[20 + i] = orderRefLittleEndianBytes[i];
-  }
+  memcpy(order.ticker, o->ticker, 8);
+
+  order.timestamp = epochToMidnightLocalNanos + readBigEndianUint64(in, 1);
 
   // Size. Offset 28, length 4.
   uint32_t sizeInt = readBigEndianUint32(in, 17);
@@ -288,16 +280,17 @@ void Parser::mapExecuted(const char *in, char** outPtr) {
   }
   uint32_t remainingSize = o->size - sizeInt;
   o->size =  remainingSize;
-  char* sizeBytes = reinterpret_cast<char*>(&sizeInt);
-  for(int i = 0 ; i < 4; i++) {
-    out[28 + i] = sizeBytes[i];
-  } 
+  order.size = sizeInt;
 
-  char* priceBytes = reinterpret_cast<char*>(&o->price);
-  for(int i = 0 ; i < 8; i++) {
-    // On x86, the bytes of the double are in little-endian order.
-    out[32 + i] = priceBytes[i];
-  }
+  order.price = o->price;
+
+  memcpy(out, order.msgType, sizeof(order.msgType));
+  memcpy(&out[2], &order.msgSize, sizeof(order.msgSize));
+  memcpy(&out[4], &order.ticker, sizeof(order.ticker));
+  memcpy(&out[12], &order.timestamp, sizeof(order.timestamp));
+  memcpy(&out[20], &order.orderRef, sizeof(order.orderRef));
+  memcpy(&out[28], &order.size, sizeof(order.size));
+  memcpy(&out[32], &order.price, sizeof(order.price));
 }
 
 void Parser::mapReduced(const char* in, char** outPtr) {
