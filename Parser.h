@@ -4,7 +4,11 @@
 #include <queue>          // std::queue
 #include <unordered_map>  // std::unordered_map
 
-// typedef typedef char ticker[8];
+typedef char msgsymbol_t;
+typedef char msgtype_t[2];
+typedef char ticker_t[8];
+typedef char side_t;
+typedef char padding_t[3];
 
 struct PendingOrder_t {
   // Ticker characters, with spaces replaced by nul.
@@ -14,31 +18,31 @@ struct PendingOrder_t {
 };
 
 struct InputAddOrder {
-  char msgType;
+  msgsymbol_t msgType;
   uint64_t timestamp;
   uint64_t orderRef;
-  char side;
+  side_t side;
   uint32_t size;
-  char ticker[8];
+  ticker_t ticker;
   int32_t price;
 };
 
 struct InputOrderExecuted {
-  char msgType;
+  msgsymbol_t msgType;
   uint64_t timestamp;
   uint64_t orderRef;
   uint32_t size;
 };
 
 struct InputOrderCanceled {
-  char msgType;
+  msgsymbol_t msgType;
   uint64_t timestamp;
   uint64_t orderRef;
   uint32_t size;
 };
 
 struct InputOrderReplaced {
-  char msgType;
+  msgsymbol_t msgType;
   uint64_t timestamp;
   uint64_t originalOrderRef;
   uint64_t newOrderRef;

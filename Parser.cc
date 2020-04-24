@@ -5,23 +5,22 @@
 #include <cstring>
 #include <assert.h>     /* assert */
 
-
 struct OutputAddOrder { 
-  char msgType[2];
+  msgtype_t msgType;
   uint16_t msgSize;
-  char ticker[8];
+  ticker_t ticker;
   uint64_t timestamp;
   uint64_t orderRef;
-  char side;
-  char padding[3];
+  side_t side;
+  padding_t padding;
   uint32_t size;
   double price;
 }; 
 
 struct OutputOrderExecuted { 
-  char msgType[2];
+  msgtype_t msgType;
   uint16_t msgSize;
-  char ticker[8];
+  ticker_t ticker;
   uint64_t timestamp;
   uint64_t orderRef;
   uint32_t size;
@@ -29,18 +28,18 @@ struct OutputOrderExecuted {
 }; 
 
 struct OutputOrderReduced {
-  char msgType[2];
+  msgtype_t msgType;
   uint16_t msgSize;
-  char ticker[8];
+  ticker_t ticker;
   uint64_t timestamp;
   uint64_t orderRef;
   uint32_t sizeRemaining;
 };
 
 struct OutputOrderReplaced {
-  char msgType[2];
+  msgtype_t msgType;
   uint16_t msgSize;
-  char ticker[8];
+  ticker_t ticker;
   uint64_t timestamp;
   uint64_t oldOrderRef;
   uint64_t newOrderRef;
@@ -52,15 +51,15 @@ struct OutputOrderReplaced {
 const char SPACE_CHAR = ' ';
 const char NUL_CHAR = '\0';
 
-const char PADDING[] = {0x00,0x00,0x00};
-const char MSG_TYPE_ADD = 'A';
-const char MSG_TYPE_EXECUTE = 'E';
-const char MSG_TYPE_CANCEL = 'X';
-const char MSG_TYPE_REPLACE = 'R';
-const char MSG_TYPE_1[] = { 0x00, 0x01 };
-const char MSG_TYPE_2[] = { 0x00, 0x02 };
-const char MSG_TYPE_3[] = { 0x00, 0x03 };
-const char MSG_TYPE_4[] = { 0x00, 0x04 };
+const padding_t PADDING = {0x00,0x00,0x00};
+const msgsymbol_t MSG_TYPE_ADD = 'A';
+const msgsymbol_t MSG_TYPE_EXECUTE = 'E';
+const msgsymbol_t MSG_TYPE_CANCEL = 'X';
+const msgsymbol_t MSG_TYPE_REPLACE = 'R';
+const msgtype_t MSG_TYPE_1 = { 0x00, 0x01 };
+const msgtype_t MSG_TYPE_2[] = { 0x00, 0x02 };
+const msgtype_t MSG_TYPE_3[] = { 0x00, 0x03 };
+const msgtype_t MSG_TYPE_4[] = { 0x00, 0x04 };
 
 const char INPUT_ADD_PAYLOAD_SIZE = 34;
 const char INPUT_EXECUTE_PAYLOAD_SIZE = 21;
@@ -76,7 +75,6 @@ const char MAX_INPUT_PAYLOAD_SIZE = 34;
 const char MIN_INPUT_PAYLOAD_SIZE = 21;
 
 const char MAX_OUTPUT_PAYLOAD_SIZE = 48;
-
 
 Parser::Parser(int date, const std::string &outputFilename) {
   filename = outputFilename;
@@ -287,6 +285,7 @@ void Parser::serializeAddOrder(char ** outPtr, InputAddOrder inputMsg) {
   order.msgSize = OUTPUT_ADD_PAYLOAD_SIZE;
 
   memcpy(order.ticker, inputMsg.ticker, sizeof(inputMsg.ticker));
+  // Replace space with null.
   for(int i = 0 ; i < 8; i++) {
     if(order.ticker[i] == SPACE_CHAR) {
       order.ticker[i] = NUL_CHAR;
@@ -325,14 +324,6 @@ void Parser::serializeAddOrder(char ** outPtr, InputAddOrder inputMsg) {
   };
 }
 
-PendingOrder_t* Parser::lookupOrder(uint64_t orderRef) {
-  auto order  = orders.find(orderRef);
-  if(order == orders.end()) {
-    throw std::runtime_error("Order ref was not found: " +  std::to_string(orderRef));
-  }
-  return &(order->second);
-}
-
 void Parser::serializeOrderExecuted(char** outPtr, InputOrderExecuted inputMsg) {
   OutputOrderExecuted order;
   char* out = *outPtr;
@@ -341,9 +332,11 @@ void Parser::serializeOrderExecuted(char** outPtr, InputOrderExecuted inputMsg) 
 
   order.msgSize = OUTPUT_EXECUTE_PAYLOAD_SIZE;
 
-  order.orderRef = inputMsg.orderRef;
+  // Inherit ticker symbol from original order.  
   PendingOrder_t* pendingOrder = lookupOrder(inputMsg.orderRef);
   memcpy(order.ticker, pendingOrder->ticker, 8);
+
+  order.orderRef = inputMsg.orderRef;
 
   order.timestamp = epochToMidnightLocalNanos + inputMsg.timestamp;
 
@@ -374,12 +367,15 @@ void Parser::serializeOrderReduced(char** outPtr, InputOrderCanceled inputMsg) {
 
   order.msgSize = OUTPUT_CANCEL_PAYLOAD_SIZE;
 
-  order.orderRef = inputMsg.orderRef;
+  // Inherit ticker symbol from original order.
   PendingOrder_t* pendingOrder = lookupOrder(inputMsg.orderRef);
   memcpy(order.ticker, pendingOrder->ticker, 8);
 
   order.timestamp = epochToMidnightLocalNanos + inputMsg.timestamp;
-  
+
+  order.orderRef = inputMsg.orderRef;
+
+  // Reduce remaining size by the cancel amount.
   uint32_t sizeRemaining = (inputMsg.size > pendingOrder->sizeRemaining ? 
       0 : pendingOrder->sizeRemaining - inputMsg.size);
   pendingOrder->sizeRemaining = sizeRemaining;
@@ -402,23 +398,25 @@ void Parser::serializeOrderReplaced(char ** outPtr, InputOrderReplaced inputMsg)
 
   order.msgSize = OUTPUT_REPLACE_PAYLOAD_SIZE;
 
-  order.oldOrderRef = inputMsg.originalOrderRef;
+  // Inherit ticker symbol.
   PendingOrder_t* pendingOrder = lookupOrder(inputMsg.originalOrderRef);
-  pendingOrder->sizeRemaining = 0;
   assert(sizeof(order.ticker) == sizeof(pendingOrder->ticker));
   memcpy(order.ticker, pendingOrder->ticker, sizeof(order.ticker));
 
   order.timestamp = epochToMidnightLocalNanos + inputMsg.timestamp;
 
+  order.oldOrderRef = inputMsg.originalOrderRef;
   order.newOrderRef = inputMsg.newOrderRef;
-
-  order.newSize = inputMsg.size;
 
   double price = double(inputMsg.price);
   order.newPrice = price;
-  
+  order.newSize = inputMsg.size;
+
+  // Update old order.
+  pendingOrder->sizeRemaining = 0;
+
   char * ticker = new char[8];
-  memcpy(ticker, pendingOrder->ticker, 8);
+  memcpy(ticker, pendingOrder->ticker, 8);  
   orders[order.newOrderRef] = {
     ticker,
     order.newPrice,
@@ -433,6 +431,14 @@ void Parser::serializeOrderReplaced(char ** outPtr, InputOrderReplaced inputMsg)
   memcpy(&out[28], &order.newOrderRef, sizeof(order.newOrderRef));
   memcpy(&out[36], &order.newSize, sizeof(order.newSize));
   memcpy(&out[40], &order.newPrice, sizeof(order.newPrice));
+}
+
+PendingOrder_t* Parser::lookupOrder(uint64_t orderRef) {
+  auto order  = orders.find(orderRef);
+  if(order == orders.end()) {
+    throw std::runtime_error("Order ref was not found: " +  std::to_string(orderRef));
+  }
+  return &(order->second);
 }
 
 char* Parser::popNBytes(int n, char** buf) {
