@@ -1,4 +1,8 @@
-# Environment Setup
+## Assumptions
+
+
+
+## Environment Setup
 
 1. Used Azure Visual Studio Online.
 2. Provisioned a 8 core 16gb system
@@ -29,17 +33,17 @@
   - g++ as a linker will link c++ libraries
 
 
-# System Programming notes
+## System Programming notes
 
-## Big endian vs little endian
+### Big endian vs little endian
 
-## UDP
+### UDP
 
 - TCP makes a handshake.
 - Resend loss packets
 - UDP just one way data stream, doesn't care if received
 
-## Make
+### Make
 
 Makefile has "targets" or alias or rules
 

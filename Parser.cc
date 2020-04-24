@@ -76,6 +76,8 @@ const char MIN_INPUT_PAYLOAD_SIZE = 21;
 
 const char MAX_OUTPUT_PAYLOAD_SIZE = 48;
 
+const char MIN_PACKET_SIZE = 6;
+
 Parser::Parser(int date, const std::string &outputFilename) {
   filename = outputFilename;
   
@@ -120,7 +122,7 @@ void Parser::catchupSequencePayloads() {
     const char* bytes = entry->second;
     uint16_t packetSize = readBigEndianUint16(bytes, 0);
     // Enqueue the payload.
-    for( int i = 6; i < packetSize; i++) {
+    for( int i = MIN_PACKET_SIZE; i < packetSize; i++) {
       q.push(bytes[i]);
     }
 
@@ -181,8 +183,8 @@ void Parser::processQueue() {
 
 void Parser::onUDPPacket(const char *buffer, size_t len) {
   printf("Received packet of size %zu\n", len);
-  if(static_cast<int>(len) < 6) {
-      throw std::invalid_argument("Packet must be atleast 6 bytes");
+  if(static_cast<int>(len) < MIN_PACKET_SIZE) {
+      throw std::invalid_argument("Packet size must be atleast " + std::to_string(MIN_PACKET_SIZE));
   }
 
   // Copy the buffer since may be mutated.
@@ -208,7 +210,7 @@ void Parser::onUDPPacket(const char *buffer, size_t len) {
   }
 
   // Enqueue payload of current packet.
-  for( int i = 6; i < static_cast<int>(len); i++) {
+  for( int i = MIN_PACKET_SIZE; i < static_cast<int>(len); i++) {
     q.push(buf[i]);
   }
   sequencePosition++;
@@ -369,7 +371,7 @@ void Parser::serializeOrderReduced(char** outPtr, InputOrderCanceled inputMsg) {
 
   // Inherit ticker symbol from original order.
   PendingOrder_t* pendingOrder = lookupOrder(inputMsg.orderRef);
-  memcpy(order.ticker, pendingOrder->ticker, 8);
+  memcpy(order.ticker, pendingOrder->ticker, sizeof(pendingOrder->ticker));
 
   order.timestamp = epochToMidnightLocalNanos + inputMsg.timestamp;
 
@@ -415,7 +417,7 @@ void Parser::serializeOrderReplaced(char ** outPtr, InputOrderReplaced inputMsg)
   // Update old order.
   pendingOrder->sizeRemaining = 0;
 
-  char * ticker = new char[8];
+  char * ticker = new char[sizeof(pendingOrder->ticker)];
   memcpy(ticker, pendingOrder->ticker, 8);  
   orders[order.newOrderRef] = {
     ticker,
