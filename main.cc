@@ -10,16 +10,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/uio.h>
-#include <iostream>
-#include <fstream>
 
-const char *inputFile = "test_artifacts/test_add_execute.in";
-const char *outputFile = "output";
+const char *inputFile = "test.in";
 
 int main(int argc, char **argv) {
-
-    constexpr int currentDate = 19701231;
-    Parser myParser(currentDate, std::string(outputFile));
+    constexpr int currentDate = 20180612;
+    Parser myParser(currentDate, "myTestFile");
 
     int fd = open(inputFile, O_RDONLY);
     if (fd == -1) {

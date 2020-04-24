@@ -1,21 +1,3 @@
-## Disclaimer
-
-This is my first week ever programming in C++. Things I did not know 
-1 week ago:
-
-- memcpy
-- Difference between .h, .cc, .o files
-- Makefiles
-- How to print a hello world in C++ (this doesn't use cout<< pattern).
-- whether or not you can throw exceptions in c++
-- c++'s data types
-- what endianness means for floating point numbers
-- what is UDP / TCP
-- structs and compiler padding
-- any C++ collections, stdlib
-- How to define a class or function in C++, or "methods"
-
-
 ## Assumptions
 
 - Min packet size >=6, payload >=0 bytes. This is 
