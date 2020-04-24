@@ -941,7 +941,7 @@ int main(int argc, char **argv) {
   test_replaced_replaced_executed();
   test_replaced_replaced_canceled();
 
-  // Test packets.
+  // // Test packets.
   test_add_replaced_replaced_executed_single_packet();
   test_add_replaced_replaced_executed_out_of_order();
   test_add_replaced_replaced_executed_straddled_out_of_order();

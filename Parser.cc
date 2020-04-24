@@ -2,6 +2,31 @@
 
 #include <fstream>
 #include <iostream>
+#include <cstring>
+
+struct AddOrder { 
+  char msgType[2];
+  uint16_t msgSize;
+  char ticker[8];
+  uint64_t timestamp;
+  uint64_t orderRef;
+  char side;
+  char padding[3];
+  uint32_t size;
+  double price;
+}; 
+
+
+struct ExecutedOrder { 
+  char msgType[2];
+  uint16_t msgSize;
+  char ticker[8];
+  uint64_t timestamp;
+  uint64_t orderRef;
+  uint32_t size;
+  double price;
+}; 
+
 
 Parser::Parser(int date, const std::string &outputFilename) {
   filename = outputFilename;
@@ -164,62 +189,52 @@ uint16_t Parser::readBigEndianUint16(const char *buf, int offset) {
 }
 
 void Parser::mapAdd(const char *in, char ** outPtr) {
+  AddOrder a;
   char * out = *outPtr;
 
-  // Msg Type field.
-  out[0] = 0x00, out[1] = 0x01;
-  // Msg Size field.
-  out[2] = 0x2C, out[3] = 0x00;
+  char msgType[] = { 0x00, 0x01 };
+  memcpy(a.msgType, msgType, 2);
 
-  // Copy Stock Ticker Ascii bytes with space replaced by null.
-  // Create buffer of mapped Ascii bytes for store in Order struct.
+  a.msgSize = 44;
+
   char* ticker = new char[8];
   for(int i = 0; i < 8; i++) {
     char c = in[22 + i];
-     // Replace space with null.
-    c = c == ' ' ? '\0': c;
-
-    ticker[i] = c;
-    out[ 4 + i] = c;
+    ticker[i] = c == ' ' ? '\0': c;
   }
+  memcpy(a.ticker, ticker, 8);
+  memcpy(out, &a, 12);
 
   // Timestamp field. 
   uint64_t timestamp = readBigEndianUint64(in, 1);
   uint64_t nanosSinceEpoch = epochToMidnightLocalNanos + timestamp; 
+  a.timestamp = nanosSinceEpoch;
 
-  char* timeLittleEndianBytes = reinterpret_cast<char*>(&nanosSinceEpoch);
-  for(int i = 0 ; i < 8; i++) {
-    out[12+i] = timeLittleEndianBytes[i];
-  }
-
-  // Copy Order Reference Number, write in little endian.
   uint64_t orderRef = readBigEndianUint64(in, 9);
-  char* orderRefLittleEndianBytes = reinterpret_cast<char*>(&orderRef);
-  for(int i = 0 ; i < 8; i++) {
-    out[20 + i] = orderRefLittleEndianBytes[i];
-  }
+  a.orderRef = orderRef;
 
-  // Map ASCII value for Side (either 'B' or 'S').
-  out[28] = in[17];
+  a.side = in[17];
 
-  // Padding. 
-  for(int i = 29; i <= 31; i++) {
-    out[i] = 0x00;
-  }
+  char padding[] = { 0x00, 0x00, 0x00} ;
+  memcpy(a.padding, padding, 3);
 
-  // Size. Offset 32, length 4.
   uint32_t size = readBigEndianUint32(in, 18);
-  char* sizeBytes = reinterpret_cast<char*>(&size);
-  for(int i = 0 ; i < 4; i++) {
-    out[32 + i] = sizeBytes[i];
-  }
+  a.size = size;
 
-  // Price. Offset 36, length 8.
   double price = double(readBigEndianUint32(in, 30));
-  char* priceBytes = reinterpret_cast<char*>(&price);
-  for(int i = 0 ; i < 8; i++) {
-    out[36 + i] = priceBytes[i];
-  }
+  a.price = price;
+
+  // Must individually copy fields since compiler may add
+  // padding between struct fields.
+  memcpy(out, a.msgType, sizeof(a.msgType));
+  memcpy(&out[2], &a.msgSize, sizeof(a.msgSize));
+  memcpy(&out[4], &a.ticker, sizeof(a.ticker));
+  memcpy(&out[12], &a.timestamp, sizeof(a.timestamp));
+  memcpy(&out[20], &a.orderRef, sizeof(a.orderRef));
+  memcpy(&out[28], &a.side, sizeof(a.side));
+  memcpy(&out[31], &a.padding, sizeof(a.padding));
+  memcpy(&out[32], &a.size, sizeof(a.size));
+  memcpy(&out[36], &a.price, sizeof(a.price));
 
   orders[orderRef] = {
     ticker,
