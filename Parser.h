@@ -67,6 +67,11 @@ class Parser {
   // Utility to abstract away unordered_map boilerplate, lacking ::contains.
   PendingOrder_t* lookupOrder(uint64_t orderRef);
 
+  void deserializeInputAddOrder(char* in, InputAddOrder* msg);
+  void deserializeInputOrderExecuted(char* in, InputOrderExecuted* msg);
+  void deserializeInputOrderCanceled(char* in, InputOrderCanceled* msg);
+  void deserializeInputOrderReplaced(char* in, InputOrderReplaced* msg);
+
   // Functions that map message from input to output message in second buffer.
   void mapAdd(char** outPtr, InputAddOrder inputMsg);
   void mapExecuted(char** outPtr, InputOrderExecuted inputMsg);

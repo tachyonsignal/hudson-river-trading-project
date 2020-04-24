@@ -135,7 +135,7 @@ void Parser::processQueue() {
   std::ofstream outfile;
   outfile.open(filename, std::ios_base::app); // append instead of overwrite
   
-  // Reuse buffer to store current input message.
+  // Reuse buffer to store current serialized input / output messages.
   char* in = new char[MAX_INPUT_PAYLOAD_SIZE];
   char* out = new char[MAX_OUTPUT_PAYLOAD_SIZE];
 
@@ -147,42 +147,28 @@ void Parser::processQueue() {
     switch(q.front()) {
       case MSG_TYPE_ADD:
         popNBytes(INPUT_ADD_PAYLOAD_SIZE, &in);
-        InputAddOrder inputAddOrder;
-        inputAddOrder.orderRef = readBigEndianUint64(in, 9);        
-        inputAddOrder.size = readBigEndianUint32(in, 18);
-        inputAddOrder.price = readBigEndianUint32(in, 30);
-        inputAddOrder.timestamp = readBigEndianUint64(in, 1);
-        inputAddOrder.side = in[17];
-        memcpy(inputAddOrder.ticker, &in[22], 8);
+        deserializeInputAddOrder(in, &inputAddOrder);
         mapAdd(&out, inputAddOrder);
         outfile.write(out, OUTPUT_ADD_PAYLOAD_SIZE);
         break;
       case MSG_TYPE_EXECUTE:
         popNBytes(INPUT_EXECUTE_PAYLOAD_SIZE, &in);
         InputOrderExecuted inputOrderExecuted;
-        inputOrderExecuted.timestamp = readBigEndianUint64(in, 1);
-        inputOrderExecuted.orderRef = readBigEndianUint64(in, 9);
-        inputOrderExecuted.size = readBigEndianUint32(in, 17);
+        deserializeInputOrderExecuted(in, &inputOrderExecuted);
         mapExecuted(&out, inputOrderExecuted);
         outfile.write(out, OUTPUT_EXECUTE_PAYLOAD_SIZE);
         break;
       case MSG_TYPE_CANCEL:
         popNBytes(INPUT_CANCEL_PAYLOAD_SIZE, &in);
         InputOrderCanceled inputOrderCanceled;
-        inputOrderCanceled.timestamp = readBigEndianUint64(in, 1);
-        inputOrderCanceled.orderRef = readBigEndianUint64(in, 9);
-        inputOrderCanceled.size = readBigEndianUint32(in, 17);
+        deserializeInputOrderCanceled(in, &inputOrderCanceled);
         mapReduced(&out, inputOrderCanceled);
         outfile.write(out, OUTPUT_CANCEL_PAYLOAD_SIZE);
         break;
       case MSG_TYPE_REPLACE:
         popNBytes(INPUT_REPLACE_PAYLOAD_SIZE, &in);
         InputOrderReplaced inputOrderReplaced;
-        inputOrderReplaced.timestamp = readBigEndianUint64(in, 1);
-        inputOrderReplaced.originalOrderRef = readBigEndianUint64(in, 9);
-        inputOrderReplaced.newOrderRef = readBigEndianUint64(in, 17);
-        inputOrderReplaced.size = readBigEndianUint32(in, 25);
-        inputOrderReplaced.price = readBigEndianUint32(in, 29);
+        deserializeInputOrderReplaced(in, &inputOrderReplaced);
         mapReplaced(&out, inputOrderReplaced);
         outfile.write(out, OUTPUT_REPLACE_PAYLOAD_SIZE);
         break;
@@ -258,6 +244,33 @@ uint16_t Parser::readBigEndianUint16(const char *buf, int offset) {
   return (
     (uint16_t)((uint8_t)buf[offset]) << 8 |
     (uint16_t)((uint8_t)buf[offset+1]));
+}
+
+void Parser::deserializeInputAddOrder(char* in, InputAddOrder* msg) {
+  msg->orderRef = readBigEndianUint64(in, 9);        
+  msg->size = readBigEndianUint32(in, 18);
+  msg->price = readBigEndianUint32(in, 30);
+  msg->timestamp = readBigEndianUint64(in, 1);
+  msg->side = in[17];
+  memcpy(msg->ticker, &in[22], 8);
+}
+
+void Parser::deserializeInputOrderExecuted(char* in, InputOrderExecuted* msg) {
+  msg->timestamp = readBigEndianUint64(in, 1);
+  msg->orderRef = readBigEndianUint64(in, 9);
+  msg->size = readBigEndianUint32(in, 17);
+}
+void Parser::deserializeInputOrderCanceled(char* in, InputOrderCanceled* msg) {
+  msg->timestamp = readBigEndianUint64(in, 1);
+  msg->orderRef = readBigEndianUint64(in, 9);
+  msg->size = readBigEndianUint32(in, 17);
+}
+void Parser::deserializeInputOrderReplaced(char* in, InputOrderReplaced* msg) {
+  msg->timestamp = readBigEndianUint64(in, 1);
+  msg->originalOrderRef = readBigEndianUint64(in, 9);
+  msg->newOrderRef = readBigEndianUint64(in, 17);
+  msg->size = readBigEndianUint32(in, 25);
+  msg->price = readBigEndianUint32(in, 29);
 }
 
 void Parser::mapAdd(char ** outPtr, InputAddOrder inputMsg) {
