@@ -27,6 +27,25 @@ struct ExecutedOrder {
   double price;
 }; 
 
+struct ReducedOrder {
+  char msgType[2];
+  uint16_t msgSize;
+  char ticker[8];
+  uint64_t timestamp;
+  uint64_t orderRef;
+  uint32_t sizeRemaining;
+};
+
+struct ReplacedOrder {
+  char msgType[2];
+  uint16_t msgSize;
+  char ticker[8];
+  uint64_t timestamp;
+  uint64_t oldOrderRef;
+  uint64_t newOrderRef;
+  uint32_t newSize;
+  double newPrice;
+};
 
 Parser::Parser(int date, const std::string &outputFilename) {
   filename = outputFilename;
@@ -215,7 +234,7 @@ void Parser::mapAdd(const char *in, char ** outPtr) {
 
   a.side = in[17];
 
-  char padding[] = { 0x00, 0x00, 0x00} ;
+  char padding[] = { 0x00, 0x00, 0x00 };
   memcpy(a.padding, padding, 3);
 
   uint32_t size = readBigEndianUint32(in, 18);
@@ -256,7 +275,6 @@ void Parser::mapExecuted(const char *in, char** outPtr) {
   ExecutedOrder order;
   char* out = *outPtr;
   
-  
   char msgType[] = { 0x00, 0x02 };
   memcpy(order.msgType, msgType, 2);
 
@@ -294,103 +312,83 @@ void Parser::mapExecuted(const char *in, char** outPtr) {
 }
 
 void Parser::mapReduced(const char* in, char** outPtr) {
+  ReducedOrder order;
   char* out = *outPtr;
 
-  // Msg type. Offset 0, length 2.
-  out[0] = 0x00, out[1] = 0x03;
-    // Msg size. Offset 2, length 2.
-  out[2] = 0x20, out[3] = 0x00;
+  char msgType[] = { 0x00, 0x03 };
+  memcpy(order.msgType, msgType, 2);
+
+  order.msgSize = 32;
+
 
   // Lookup add order using order ref.
   uint64_t orderRef = readBigEndianUint64(in, 9);
   Order_t* o = lookupOrder(orderRef);
-  for(int i = 0 ; i < 8; i++) {
-    out[4+i] = o->ticker[i];
-  }
+  memcpy(order.ticker, o->ticker, 8);
 
-  // Timestamp, offset 12, length 8.
-  uint64_t timestamp = readBigEndianUint64(in, 1);
-  uint64_t nanosSinceEpoch = epochToMidnightLocalNanos + timestamp; 
-  char* timeBytes = reinterpret_cast<char*>(&nanosSinceEpoch);
-  for(int i = 0 ; i < 8; i++) {
-    out[12+i] = timeBytes[i];
-  }
+  order.orderRef = orderRef;
 
-  // Order ref number. Offset 20, length 8.
-  char* orderRefLittleEndianBytes = reinterpret_cast<char*>(&orderRef);
-  for(int i = 0 ; i < 8; i++) {
-    out[20 + i ] = orderRefLittleEndianBytes[i];
-  }
+  order.timestamp = epochToMidnightLocalNanos + readBigEndianUint64(in, 1);
   
-  // Size remaining. Offset 28, length 4.
-  uint32_t sizeInt = readBigEndianUint32(in, 17);
-  uint32_t remainingSize = sizeInt > o->size ? 0 : o->size - sizeInt;
+  uint32_t size = readBigEndianUint32(in, 17);
+  uint32_t remainingSize = size > o->size ? 0 : o->size - size;
   o->size = remainingSize;
+  order.sizeRemaining = remainingSize;
 
-  char* sizeBytes = reinterpret_cast<char*>(&remainingSize);
-  for(int i = 0 ; i < 4; i++) {
-    out[28 + i] = sizeBytes[i];
-  }
+  memcpy(out, order.msgType, sizeof(order.msgType));
+  memcpy(&out[2], &order.msgSize, sizeof(order.msgSize));
+  memcpy(&out[4], &order.ticker, sizeof(order.ticker));
+  memcpy(&out[12], &order.timestamp, sizeof(order.timestamp));
+  memcpy(&out[20], &order.orderRef, sizeof(order.orderRef));
+  memcpy(&out[28], &order.sizeRemaining, sizeof(order.sizeRemaining));
 }
 
 void Parser::mapReplaced(const char *in, char ** outPtr) {
+  ReplacedOrder order;
   char* out = *outPtr;
 
-  // Msg type. Offset 0, length 2.
-  out[0] = 0x00, out[1] = 0x04;
-  // Msg size. Offset 2, length 2.
-  out[2] = 0x30, out[3] = 0x00;
-  
+  char msgType[] = { 0x00, 0x04 };
+  memcpy(order.msgType, msgType, 2);
+
+  order.msgSize = 48;
+
   // Lookup add order using order ref.
-  uint64_t orderRef = readBigEndianUint64(in, 9);
-  Order_t* o = lookupOrder(orderRef);
+  uint64_t oldOrderRef = readBigEndianUint64(in, 9);
+  Order_t* o = lookupOrder(oldOrderRef);
   // Order's size should go to 0.
   o->size = 0;
+  order.oldOrderRef = oldOrderRef;
 
-  // Stock ticker. Offset 4, length 8.
-  for(int i = 0 ; i < 8; i++) {
-    out[4+i] = o->ticker[i];
-  }
+  // assert(sizeof(order.ticker) == sizeof(o.ticker));
+  memcpy(order.ticker, o->ticker, sizeof(order.ticker));
 
-  uint64_t timestamp = readBigEndianUint64(in, 1);
-  uint64_t nanosSinceEpoch = epochToMidnightLocalNanos + timestamp; 
-  char* timeBytes = reinterpret_cast<char*>(&nanosSinceEpoch);
-  for(int i = 0 ; i < 8; i++) {
-    out[12+i] = timeBytes[i];
-  }
+  order.timestamp = epochToMidnightLocalNanos + readBigEndianUint64(in, 1);
 
-  // Older order reference number. offset 20, length 8.
-  char* orderRefLittleEndianBytes = reinterpret_cast<char*>(&orderRef);
-  for(int i = 0 ; i < 8; i++) {
-    out[20 + i] = orderRefLittleEndianBytes[i];
-  }
 
   // New order reference number. offset 28, length 8.
   uint64_t newOrderRef = readBigEndianUint64(in, 17);
-  char* newOrderRefBytes = reinterpret_cast<char*>(&newOrderRef);
-  for(int i = 0 ; i < 8; i++) {
-    out[28 + i] = newOrderRefBytes[i];
-  }
+  order.newOrderRef = newOrderRef;
 
-  // New size. Offset 36, length 4.
   uint32_t size = readBigEndianUint32(in, 25);
-  char* sizeBytes = reinterpret_cast<char*>(&size);
-  for(int i = 0 ; i < 4; i++) {
-    out[36 + i] = sizeBytes[i];
-  }
+  order.newSize = size;
 
   double price = double(readBigEndianUint32(in, 29));
-  char* priceBytes = reinterpret_cast<char*>(&price);
-  // On x86, the bytes of the double are in little-endian order.
-  for(int i = 0 ; i < 8 ; i++) {
-    out[40 + i] = priceBytes[i];
-  }
-
+  order.newPrice = price;
+  
   orders[newOrderRef] = {
     o->ticker,
     price,
     size
   };
+
+  memcpy(out, order.msgType, sizeof(order.msgType));
+  memcpy(&out[2], &order.msgSize, sizeof(order.msgSize));
+  memcpy(&out[4], &order.ticker, sizeof(order.ticker));
+  memcpy(&out[12], &order.timestamp, sizeof(order.timestamp));
+  memcpy(&out[20], &order.oldOrderRef, sizeof(order.oldOrderRef));
+  memcpy(&out[28], &order.newOrderRef, sizeof(order.newOrderRef));
+  memcpy(&out[36], &order.newSize, sizeof(order.newSize));
+  memcpy(&out[40], &order.newPrice, sizeof(order.newPrice));
 }
 
 char* Parser::popNBytes(int n, char** buf) {
