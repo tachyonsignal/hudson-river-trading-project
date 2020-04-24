@@ -6,11 +6,11 @@
 
 // typedef typedef char ticker[8];
 
-struct Order_t {
+struct PendingOrder_t {
   // Ticker characters, with spaces replaced by nul.
   char * ticker;
   double price;
-  uint32_t size;
+  uint32_t sizeRemaining;
 };
 
 class Parser {
@@ -30,9 +30,9 @@ class Parser {
   std::unordered_map<uint16_t, const char*> earlyPackets;
 
   // Track Add Orders and their remaining order size.
-  std::unordered_map<uint64_t, Order_t> orders;
+  std::unordered_map<uint64_t, PendingOrder_t> orders;
   // Utility to abstract away unordered_map boilerplate, lacking ::contains.
-  Order_t* lookupOrder(uint64_t orderRef);
+  PendingOrder_t* lookupOrder(uint64_t orderRef);
 
   // Functions that map message from input to output message in second buffer.
   void mapAdd(const char* in, char** outPtr);
