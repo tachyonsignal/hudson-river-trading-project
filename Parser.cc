@@ -5,6 +5,7 @@
 #include <cstring>
 #include <assert.h>     /* assert */
 
+
 struct OutputAddOrder { 
   char msgType[2];
   uint16_t msgSize;
@@ -146,22 +147,43 @@ void Parser::processQueue() {
     switch(q.front()) {
       case MSG_TYPE_ADD:
         popNBytes(INPUT_ADD_PAYLOAD_SIZE, &in);
-        mapAdd(in, &out);
+        InputAddOrder inputAddOrder;
+        inputAddOrder.orderRef = readBigEndianUint64(in, 9);        
+        inputAddOrder.size = readBigEndianUint32(in, 18);
+        inputAddOrder.price = readBigEndianUint32(in, 30);
+        inputAddOrder.timestamp = readBigEndianUint64(in, 1);
+        inputAddOrder.side = in[17];
+        memcpy(inputAddOrder.ticker, &in[22], 8);
+        mapAdd(&out, inputAddOrder);
         outfile.write(out, OUTPUT_ADD_PAYLOAD_SIZE);
         break;
       case MSG_TYPE_EXECUTE:
         popNBytes(INPUT_EXECUTE_PAYLOAD_SIZE, &in);
-        mapExecuted(in, &out);
+        InputOrderExecuted inputOrderExecuted;
+        inputOrderExecuted.timestamp = readBigEndianUint64(in, 1);
+        inputOrderExecuted.orderRef = readBigEndianUint64(in, 9);
+        inputOrderExecuted.size = readBigEndianUint32(in, 17);
+        mapExecuted(&out, inputOrderExecuted);
         outfile.write(out, OUTPUT_EXECUTE_PAYLOAD_SIZE);
         break;
       case MSG_TYPE_CANCEL:
         popNBytes(INPUT_CANCEL_PAYLOAD_SIZE, &in);
-        mapReduced(in, &out);
+        InputOrderCanceled inputOrderCanceled;
+        inputOrderCanceled.timestamp = readBigEndianUint64(in, 1);
+        inputOrderCanceled.orderRef = readBigEndianUint64(in, 9);
+        inputOrderCanceled.size = readBigEndianUint32(in, 17);
+        mapReduced(&out, inputOrderCanceled);
         outfile.write(out, OUTPUT_CANCEL_PAYLOAD_SIZE);
         break;
       case MSG_TYPE_REPLACE:
         popNBytes(INPUT_REPLACE_PAYLOAD_SIZE, &in);
-        mapReplaced(in, &out);
+        InputOrderReplaced inputOrderReplaced;
+        inputOrderReplaced.timestamp = readBigEndianUint64(in, 1);
+        inputOrderReplaced.originalOrderRef = readBigEndianUint64(in, 9);
+        inputOrderReplaced.newOrderRef = readBigEndianUint64(in, 17);
+        inputOrderReplaced.size = readBigEndianUint32(in, 25);
+        inputOrderReplaced.price = readBigEndianUint32(in, 29);
+        mapReplaced(&out, inputOrderReplaced);
         outfile.write(out, OUTPUT_REPLACE_PAYLOAD_SIZE);
         break;
       default:
@@ -238,7 +260,7 @@ uint16_t Parser::readBigEndianUint16(const char *buf, int offset) {
     (uint16_t)((uint8_t)buf[offset+1]));
 }
 
-void Parser::mapAdd(const char *in, char ** outPtr) {
+void Parser::mapAdd(char ** outPtr, InputAddOrder inputMsg) {
   OutputAddOrder order;
   char * out = *outPtr;
 
@@ -246,23 +268,23 @@ void Parser::mapAdd(const char *in, char ** outPtr) {
 
   order.msgSize = OUTPUT_ADD_PAYLOAD_SIZE;
 
-  char* ticker = new char[8];
-  for(int i = 0; i < 8; i++) {
-    char c = in[22 + i];
-    ticker[i] = c == SPACE_CHAR ? NUL_CHAR : c;
+  memcpy(order.ticker, inputMsg.ticker, 8);
+  for(int i = 0 ; i < 8; i++) {
+    if(order.ticker[i] == SPACE_CHAR) {
+      order.ticker[i] = NUL_CHAR;
+    }
   }
-  memcpy(order.ticker, ticker, 8);
 
-  order.timestamp = epochToMidnightLocalNanos + readBigEndianUint64(in, 1);
+  order.timestamp = epochToMidnightLocalNanos + inputMsg.timestamp;
 
-  order.orderRef = readBigEndianUint64(in, 9);
+  order.orderRef = inputMsg.orderRef;
 
-  order.side = in[17];
+  order.side = inputMsg.side;
 
   memcpy(order.padding, PADDING, 3);
 
-  order.size = readBigEndianUint32(in, 18);
-  order.price = double(readBigEndianUint32(in, 30));
+  order.size = inputMsg.size;
+  order.price = double(inputMsg.price);
 
   // Must individually copy fields since compiler may add
   // padding between struct fields.
@@ -276,6 +298,8 @@ void Parser::mapAdd(const char *in, char ** outPtr) {
   memcpy(&out[32], &order.size, sizeof(order.size));
   memcpy(&out[36], &order.price, sizeof(order.price));
 
+  char * ticker = new char[8];
+  memcpy(ticker, order.ticker, 8);
   orders[order.orderRef] = {
     ticker,
     order.price, 
@@ -291,7 +315,7 @@ PendingOrder_t* Parser::lookupOrder(uint64_t orderRef) {
   return &(order->second);
 }
 
-void Parser::mapExecuted(const char *in, char** outPtr) {
+void Parser::mapExecuted(char** outPtr, InputOrderExecuted inputMsg) {
   OutputOrderExecuted order;
   char* out = *outPtr;
   
@@ -299,16 +323,13 @@ void Parser::mapExecuted(const char *in, char** outPtr) {
 
   order.msgSize = OUTPUT_EXECUTE_PAYLOAD_SIZE;
 
-  // Lookup add order using order ref.
-  uint64_t orderRef = readBigEndianUint64(in, 9);
-  order.orderRef = orderRef;
-  PendingOrder_t* pendingOrder = lookupOrder(orderRef);
+  order.orderRef = inputMsg.orderRef;
+  PendingOrder_t* pendingOrder = lookupOrder(inputMsg.orderRef);
   memcpy(order.ticker, pendingOrder->ticker, 8);
 
-  order.timestamp = epochToMidnightLocalNanos + readBigEndianUint64(in, 1);
+  order.timestamp = epochToMidnightLocalNanos + inputMsg.timestamp;
 
-  // Size. Offset 28, length 4.
-  uint32_t executionSize = readBigEndianUint32(in, 17);
+  uint32_t executionSize = inputMsg.size;
   // Can execute at most the remaining size.
   if(executionSize > pendingOrder->sizeRemaining) {
     executionSize = pendingOrder->sizeRemaining;
@@ -327,7 +348,7 @@ void Parser::mapExecuted(const char *in, char** outPtr) {
   memcpy(&out[32], &order.price, sizeof(order.price));
 }
 
-void Parser::mapReduced(const char* in, char** outPtr) {
+void Parser::mapReduced(char** outPtr, InputOrderCanceled inputMsg) {
   OutputOrderReduced order;
   char* out = *outPtr;
 
@@ -335,16 +356,14 @@ void Parser::mapReduced(const char* in, char** outPtr) {
 
   order.msgSize = OUTPUT_CANCEL_PAYLOAD_SIZE;
 
-  // Lookup add order using order ref.
-  uint64_t orderRef = readBigEndianUint64(in, 9);
-  order.orderRef = orderRef;
-  PendingOrder_t* pendingOrder = lookupOrder(orderRef);
+  order.orderRef = inputMsg.orderRef;
+  PendingOrder_t* pendingOrder = lookupOrder(inputMsg.orderRef);
   memcpy(order.ticker, pendingOrder->ticker, 8);
 
-  order.timestamp = epochToMidnightLocalNanos + readBigEndianUint64(in, 1);
+  order.timestamp = epochToMidnightLocalNanos + inputMsg.timestamp;
   
-  uint32_t size = readBigEndianUint32(in, 17);
-  uint32_t sizeRemaining = size > pendingOrder->sizeRemaining ? 0 : pendingOrder->sizeRemaining - size;
+  uint32_t sizeRemaining = (inputMsg.size > pendingOrder->sizeRemaining ? 
+      0 : pendingOrder->sizeRemaining - inputMsg.size);
   pendingOrder->sizeRemaining = sizeRemaining;
   order.sizeRemaining = sizeRemaining;
 
@@ -356,7 +375,7 @@ void Parser::mapReduced(const char* in, char** outPtr) {
   memcpy(&out[28], &order.sizeRemaining, sizeof(order.sizeRemaining));
 }
 
-void Parser::mapReplaced(const char *in, char ** outPtr) {
+void Parser::mapReplaced(char ** outPtr, InputOrderReplaced inputMsg) {
   OutputOrderReplaced order;
   char* out = *outPtr;
 
@@ -365,31 +384,28 @@ void Parser::mapReplaced(const char *in, char ** outPtr) {
 
   order.msgSize = OUTPUT_REPLACE_PAYLOAD_SIZE;
 
-  // Lookup add order using order ref.
-  uint64_t oldOrderRef = readBigEndianUint64(in, 9);
-  order.oldOrderRef = oldOrderRef;
-  PendingOrder_t* pendingOrder = lookupOrder(oldOrderRef);
+  order.oldOrderRef = inputMsg.originalOrderRef;
+  PendingOrder_t* pendingOrder = lookupOrder(inputMsg.originalOrderRef);
   pendingOrder->sizeRemaining = 0;
   assert(sizeof(order.ticker) == sizeof(pendingOrder->ticker));
   memcpy(order.ticker, pendingOrder->ticker, sizeof(order.ticker));
 
-  order.timestamp = epochToMidnightLocalNanos + readBigEndianUint64(in, 1);
+  order.timestamp = epochToMidnightLocalNanos + inputMsg.timestamp;
 
-  uint64_t newOrderRef = readBigEndianUint64(in, 17);
-  order.newOrderRef = newOrderRef;
+  order.newOrderRef = inputMsg.newOrderRef;
 
-  uint32_t size = readBigEndianUint32(in, 25);
-  order.newSize = size;
+  order.newSize = inputMsg.size;
 
-  double price = double(readBigEndianUint32(in, 29));
+  double price = double(inputMsg.price);
   order.newPrice = price;
   
-  orders[newOrderRef] = {
-    pendingOrder->ticker,
-    price,
-    size
+  char * ticker = new char[8];
+  memcpy(ticker, pendingOrder->ticker, 8);
+  orders[order.newOrderRef] = {
+    ticker,
+    order.newPrice,
+    order.newSize
   };
-
 
   memcpy(out, order.msgType, sizeof(order.msgType));
   memcpy(&out[2], &order.msgSize, sizeof(order.msgSize));

@@ -13,6 +13,39 @@ struct PendingOrder_t {
   uint32_t sizeRemaining;
 };
 
+struct InputAddOrder {
+  char msgType;
+  uint64_t timestamp;
+  uint64_t orderRef;
+  char side;
+  uint32_t size;
+  char ticker[8];
+  int32_t price;
+};
+
+struct InputOrderExecuted {
+  char msgType;
+  uint64_t timestamp;
+  uint64_t orderRef;
+  uint32_t size;
+};
+
+struct InputOrderCanceled {
+  char msgType;
+  uint64_t timestamp;
+  uint64_t orderRef;
+  uint32_t size;
+};
+
+struct InputOrderReplaced {
+  char msgType;
+  uint64_t timestamp;
+  uint64_t originalOrderRef;
+  uint64_t newOrderRef;
+  uint32_t size;
+  double price;
+};
+
 class Parser {
   // Sequence number of the next Packet that is ready for processing.
   uint32_t sequencePosition;
@@ -35,10 +68,10 @@ class Parser {
   PendingOrder_t* lookupOrder(uint64_t orderRef);
 
   // Functions that map message from input to output message in second buffer.
-  void mapAdd(const char* in, char** outPtr);
-  void mapExecuted(const char* in, char** outPtr);
-  void mapReduced(const char* in, char** outPtr);
-  void mapReplaced(const char* in, char** outPtr);
+  void mapAdd(char** outPtr, InputAddOrder inputMsg);
+  void mapExecuted(char** outPtr, InputOrderExecuted inputMsg);
+  void mapReduced( char** outPtr, InputOrderCanceled inputMsg);
+  void mapReplaced(char** outPtr, InputOrderReplaced inputMsg);
 
   // Utilities to interpret bytes starting at given offset in buffer.
   uint64_t readBigEndianUint64(const char *buf, int offset);
