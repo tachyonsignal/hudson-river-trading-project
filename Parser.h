@@ -67,16 +67,17 @@ class Parser {
   // Utility to abstract away unordered_map boilerplate, lacking ::contains.
   PendingOrder_t* lookupOrder(uint64_t orderRef);
 
-  void deserializeInputAddOrder(char* in, InputAddOrder* msg);
-  void deserializeInputOrderExecuted(char* in, InputOrderExecuted* msg);
-  void deserializeInputOrderCanceled(char* in, InputOrderCanceled* msg);
-  void deserializeInputOrderReplaced(char* in, InputOrderReplaced* msg);
+  // Deserializes input buffer into the input message struct.
+  void deserializeAddOrder(char* in, InputAddOrder* msg);
+  void deserializeOrderExecuted(char* in, InputOrderExecuted* msg);
+  void deserializeOrderCanceled(char* in, InputOrderCanceled* msg);
+  void deserializeOrderReplaced(char* in, InputOrderReplaced* msg);
 
-  // Functions that map message from input to output message in second buffer.
-  void mapAdd(char** outPtr, InputAddOrder inputMsg);
-  void mapExecuted(char** outPtr, InputOrderExecuted inputMsg);
-  void mapReduced( char** outPtr, InputOrderCanceled inputMsg);
-  void mapReplaced(char** outPtr, InputOrderReplaced inputMsg);
+  // Serializes input struct to buffer for output struct.
+  void serializeAddOrder(char** outPtr, InputAddOrder inputMsg);
+  void serializeOrderExecuted(char** outPtr, InputOrderExecuted inputMsg);
+  void serializeOrderReduced( char** outPtr, InputOrderCanceled inputMsg);
+  void serializeOrderReplaced(char** outPtr, InputOrderReplaced inputMsg);
 
   // Utilities to interpret bytes starting at given offset in buffer.
   uint64_t readBigEndianUint64(const char *buf, int offset);
@@ -86,6 +87,7 @@ class Parser {
   // Sub-routines of #onUDPPacket.
   // Enqueue packets that arrived early if sequence has since connected. 
   void catchupSequencePayloads();
+  // Seeks fully received input messages and writes output messages to file. 
   void processQueue();
 
   public:

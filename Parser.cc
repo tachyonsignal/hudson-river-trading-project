@@ -147,29 +147,30 @@ void Parser::processQueue() {
     switch(q.front()) {
       case MSG_TYPE_ADD:
         popNBytes(INPUT_ADD_PAYLOAD_SIZE, &in);
-        deserializeInputAddOrder(in, &inputAddOrder);
-        mapAdd(&out, inputAddOrder);
+        InputAddOrder inputAddOrder;
+        deserializeAddOrder(in, &inputAddOrder);
+        serializeAddOrder(&out, inputAddOrder);
         outfile.write(out, OUTPUT_ADD_PAYLOAD_SIZE);
         break;
       case MSG_TYPE_EXECUTE:
         popNBytes(INPUT_EXECUTE_PAYLOAD_SIZE, &in);
         InputOrderExecuted inputOrderExecuted;
-        deserializeInputOrderExecuted(in, &inputOrderExecuted);
-        mapExecuted(&out, inputOrderExecuted);
+        deserializeOrderExecuted(in, &inputOrderExecuted);
+        serializeOrderExecuted(&out, inputOrderExecuted);
         outfile.write(out, OUTPUT_EXECUTE_PAYLOAD_SIZE);
         break;
       case MSG_TYPE_CANCEL:
         popNBytes(INPUT_CANCEL_PAYLOAD_SIZE, &in);
         InputOrderCanceled inputOrderCanceled;
-        deserializeInputOrderCanceled(in, &inputOrderCanceled);
-        mapReduced(&out, inputOrderCanceled);
+        deserializeOrderCanceled(in, &inputOrderCanceled);
+        serializeOrderReduced(&out, inputOrderCanceled);
         outfile.write(out, OUTPUT_CANCEL_PAYLOAD_SIZE);
         break;
       case MSG_TYPE_REPLACE:
         popNBytes(INPUT_REPLACE_PAYLOAD_SIZE, &in);
         InputOrderReplaced inputOrderReplaced;
-        deserializeInputOrderReplaced(in, &inputOrderReplaced);
-        mapReplaced(&out, inputOrderReplaced);
+        deserializeOrderReplaced(in, &inputOrderReplaced);
+        serializeOrderReplaced(&out, inputOrderReplaced);
         outfile.write(out, OUTPUT_REPLACE_PAYLOAD_SIZE);
         break;
       default:
@@ -246,7 +247,7 @@ uint16_t Parser::readBigEndianUint16(const char *buf, int offset) {
     (uint16_t)((uint8_t)buf[offset+1]));
 }
 
-void Parser::deserializeInputAddOrder(char* in, InputAddOrder* msg) {
+void Parser::deserializeAddOrder(char* in, InputAddOrder* msg) {
   msg->orderRef = readBigEndianUint64(in, 9);        
   msg->size = readBigEndianUint32(in, 18);
   msg->price = readBigEndianUint32(in, 30);
@@ -255,17 +256,17 @@ void Parser::deserializeInputAddOrder(char* in, InputAddOrder* msg) {
   memcpy(msg->ticker, &in[22], 8);
 }
 
-void Parser::deserializeInputOrderExecuted(char* in, InputOrderExecuted* msg) {
+void Parser::deserializeOrderExecuted(char* in, InputOrderExecuted* msg) {
   msg->timestamp = readBigEndianUint64(in, 1);
   msg->orderRef = readBigEndianUint64(in, 9);
   msg->size = readBigEndianUint32(in, 17);
 }
-void Parser::deserializeInputOrderCanceled(char* in, InputOrderCanceled* msg) {
+void Parser::deserializeOrderCanceled(char* in, InputOrderCanceled* msg) {
   msg->timestamp = readBigEndianUint64(in, 1);
   msg->orderRef = readBigEndianUint64(in, 9);
   msg->size = readBigEndianUint32(in, 17);
 }
-void Parser::deserializeInputOrderReplaced(char* in, InputOrderReplaced* msg) {
+void Parser::deserializeOrderReplaced(char* in, InputOrderReplaced* msg) {
   msg->timestamp = readBigEndianUint64(in, 1);
   msg->originalOrderRef = readBigEndianUint64(in, 9);
   msg->newOrderRef = readBigEndianUint64(in, 17);
@@ -273,7 +274,7 @@ void Parser::deserializeInputOrderReplaced(char* in, InputOrderReplaced* msg) {
   msg->price = readBigEndianUint32(in, 29);
 }
 
-void Parser::mapAdd(char ** outPtr, InputAddOrder inputMsg) {
+void Parser::serializeAddOrder(char ** outPtr, InputAddOrder inputMsg) {
   OutputAddOrder order;
   char * out = *outPtr;
 
@@ -328,7 +329,7 @@ PendingOrder_t* Parser::lookupOrder(uint64_t orderRef) {
   return &(order->second);
 }
 
-void Parser::mapExecuted(char** outPtr, InputOrderExecuted inputMsg) {
+void Parser::serializeOrderExecuted(char** outPtr, InputOrderExecuted inputMsg) {
   OutputOrderExecuted order;
   char* out = *outPtr;
   
@@ -361,7 +362,7 @@ void Parser::mapExecuted(char** outPtr, InputOrderExecuted inputMsg) {
   memcpy(&out[32], &order.price, sizeof(order.price));
 }
 
-void Parser::mapReduced(char** outPtr, InputOrderCanceled inputMsg) {
+void Parser::serializeOrderReduced(char** outPtr, InputOrderCanceled inputMsg) {
   OutputOrderReduced order;
   char* out = *outPtr;
 
@@ -388,7 +389,7 @@ void Parser::mapReduced(char** outPtr, InputOrderCanceled inputMsg) {
   memcpy(&out[28], &order.sizeRemaining, sizeof(order.sizeRemaining));
 }
 
-void Parser::mapReplaced(char ** outPtr, InputOrderReplaced inputMsg) {
+void Parser::serializeOrderReplaced(char ** outPtr, InputOrderReplaced inputMsg) {
   OutputOrderReplaced order;
   char* out = *outPtr;
 
