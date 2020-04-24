@@ -248,25 +248,29 @@ uint16_t Parser::readBigEndianUint16(const char *buf, int offset) {
 }
 
 void Parser::deserializeAddOrder(char* in, InputAddOrder* msg) {
-  msg->orderRef = readBigEndianUint64(in, 9);        
-  msg->size = readBigEndianUint32(in, 18);
-  msg->price = readBigEndianUint32(in, 30);
+  msg->msgType = MSG_TYPE_ADD;
   msg->timestamp = readBigEndianUint64(in, 1);
+  msg->orderRef = readBigEndianUint64(in, 9);        
   msg->side = in[17];
+  msg->size = readBigEndianUint32(in, 18);
   memcpy(msg->ticker, &in[22], 8);
+  msg->price = readBigEndianUint32(in, 30);
 }
 
 void Parser::deserializeOrderExecuted(char* in, InputOrderExecuted* msg) {
+  msg->msgType = MSG_TYPE_EXECUTE; 
   msg->timestamp = readBigEndianUint64(in, 1);
   msg->orderRef = readBigEndianUint64(in, 9);
   msg->size = readBigEndianUint32(in, 17);
 }
 void Parser::deserializeOrderCanceled(char* in, InputOrderCanceled* msg) {
+  msg->msgType = MSG_TYPE_CANCEL;
   msg->timestamp = readBigEndianUint64(in, 1);
   msg->orderRef = readBigEndianUint64(in, 9);
   msg->size = readBigEndianUint32(in, 17);
 }
 void Parser::deserializeOrderReplaced(char* in, InputOrderReplaced* msg) {
+  msg->msgType = MSG_TYPE_REPLACE;
   msg->timestamp = readBigEndianUint64(in, 1);
   msg->originalOrderRef = readBigEndianUint64(in, 9);
   msg->newOrderRef = readBigEndianUint64(in, 17);
@@ -282,7 +286,7 @@ void Parser::serializeAddOrder(char ** outPtr, InputAddOrder inputMsg) {
 
   order.msgSize = OUTPUT_ADD_PAYLOAD_SIZE;
 
-  memcpy(order.ticker, inputMsg.ticker, 8);
+  memcpy(order.ticker, inputMsg.ticker, sizeof(inputMsg.ticker));
   for(int i = 0 ; i < 8; i++) {
     if(order.ticker[i] == SPACE_CHAR) {
       order.ticker[i] = NUL_CHAR;
