@@ -47,7 +47,6 @@ struct OutputOrderReplaced {
   double newPrice;
 };
 
-
 const char SPACE_CHAR = ' ';
 const char NUL_CHAR = '\0';
 
