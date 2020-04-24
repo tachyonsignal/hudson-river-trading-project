@@ -3,8 +3,9 @@
 #include <fstream>
 #include <iostream>
 #include <cstring>
+#include <assert.h>     /* assert */
 
-struct AddOrder { 
+struct OutputAddOrder { 
   char msgType[2];
   uint16_t msgSize;
   char ticker[8];
@@ -16,8 +17,7 @@ struct AddOrder {
   double price;
 }; 
 
-
-struct ExecutedOrder { 
+struct OutputOrderExecuted { 
   char msgType[2];
   uint16_t msgSize;
   char ticker[8];
@@ -27,7 +27,7 @@ struct ExecutedOrder {
   double price;
 }; 
 
-struct ReducedOrder {
+struct OutputOrderReduced {
   char msgType[2];
   uint16_t msgSize;
   char ticker[8];
@@ -36,7 +36,7 @@ struct ReducedOrder {
   uint32_t sizeRemaining;
 };
 
-struct ReplacedOrder {
+struct OutputOrderReplaced {
   char msgType[2];
   uint16_t msgSize;
   char ticker[8];
@@ -46,6 +46,36 @@ struct ReplacedOrder {
   uint32_t newSize;
   double newPrice;
 };
+
+
+const char SPACE_CHAR = ' ';
+const char NUL_CHAR = '\0';
+
+const char PADDING[] = {0x00,0x00,0x00};
+const char MSG_TYPE_ADD = 'A';
+const char MSG_TYPE_EXECUTE = 'E';
+const char MSG_TYPE_CANCEL = 'X';
+const char MSG_TYPE_REPLACE = 'R';
+const char MSG_TYPE_1[] = { 0x00, 0x01 };
+const char MSG_TYPE_2[] = { 0x00, 0x02 };
+const char MSG_TYPE_3[] = { 0x00, 0x03 };
+const char MSG_TYPE_4[] = { 0x00, 0x04 };
+
+const char INPUT_ADD_PAYLOAD_SIZE = 34;
+const char INPUT_EXECUTE_PAYLOAD_SIZE = 21;
+const char INPUT_CANCEL_PAYLOAD_SIZE = 21; 
+const char INPUT_REPLACE_PAYLOAD_SIZE = 33; 
+
+const char OUTPUT_ADD_PAYLOAD_SIZE = 44;
+const char OUTPUT_EXECUTE_PAYLOAD_SIZE = 40;
+const char OUTPUT_CANCEL_PAYLOAD_SIZE = 32;
+const char OUTPUT_REPLACE_PAYLOAD_SIZE = 48;
+
+const char MAX_INPUT_PAYLOAD_SIZE = 34;
+const char MIN_INPUT_PAYLOAD_SIZE = 21;
+
+const char MAX_OUTPUT_PAYLOAD_SIZE = 48;
+
 
 Parser::Parser(int date, const std::string &outputFilename) {
   filename = outputFilename;
@@ -105,33 +135,34 @@ void Parser::processQueue() {
   outfile.open(filename, std::ios_base::app); // append instead of overwrite
   
   // Reuse buffer to store current input message.
-  char* in = new char[34];
-  char* out = new char[48];
+  char* in = new char[MAX_INPUT_PAYLOAD_SIZE];
+  char* out = new char[MAX_OUTPUT_PAYLOAD_SIZE];
 
   // There's atleast 1 complete message in the queue.
-  while(q.size() >= 34 ||
-      (q.size() >= 33 && q.front() != 'A') ||
-      (q.size() >= 21 && (q.front() == 'X' || q.front() == 'E'))) {
+  while((q.size() >= INPUT_ADD_PAYLOAD_SIZE && q.front() == MSG_TYPE_ADD) ||
+      (q.size() >= INPUT_REPLACE_PAYLOAD_SIZE && q.front() == MSG_TYPE_REPLACE) ||
+      (q.size() >= INPUT_EXECUTE_PAYLOAD_SIZE && q.front() == MSG_TYPE_CANCEL) ||
+      (q.size() >= INPUT_EXECUTE_PAYLOAD_SIZE && q.front() == MSG_TYPE_EXECUTE)) {
     switch(q.front()) {
-      case 'A':
-        popNBytes(34, &in);
+      case MSG_TYPE_ADD:
+        popNBytes(INPUT_ADD_PAYLOAD_SIZE, &in);
         mapAdd(in, &out);
-        outfile.write(out, 44);
+        outfile.write(out, OUTPUT_ADD_PAYLOAD_SIZE);
         break;
-      case 'E':
-        popNBytes(21, &in);
+      case MSG_TYPE_EXECUTE:
+        popNBytes(INPUT_EXECUTE_PAYLOAD_SIZE, &in);
         mapExecuted(in, &out);
-        outfile.write(out, 40);
+        outfile.write(out, OUTPUT_EXECUTE_PAYLOAD_SIZE);
         break;
-      case 'X':
-        popNBytes(21, &in);
+      case MSG_TYPE_CANCEL:
+        popNBytes(INPUT_CANCEL_PAYLOAD_SIZE, &in);
         mapReduced(in, &out);
-        outfile.write(out, 32);
+        outfile.write(out, OUTPUT_CANCEL_PAYLOAD_SIZE);
         break;
-      case 'R':
-        popNBytes(33, &in);
+      case MSG_TYPE_REPLACE:
+        popNBytes(INPUT_REPLACE_PAYLOAD_SIZE, &in);
         mapReplaced(in, &out);
-        outfile.write(out, 48);
+        outfile.write(out, OUTPUT_REPLACE_PAYLOAD_SIZE);
         break;
       default:
         throw std::runtime_error("Unexpected message type");
@@ -208,18 +239,17 @@ uint16_t Parser::readBigEndianUint16(const char *buf, int offset) {
 }
 
 void Parser::mapAdd(const char *in, char ** outPtr) {
-  AddOrder order;
+  OutputAddOrder order;
   char * out = *outPtr;
 
-  char msgType[] = { 0x00, 0x01 };
-  memcpy(order.msgType, msgType, 2);
+  memcpy(order.msgType, MSG_TYPE_1, 2);
 
-  order.msgSize = 44;
+  order.msgSize = OUTPUT_ADD_PAYLOAD_SIZE;
 
   char* ticker = new char[8];
   for(int i = 0; i < 8; i++) {
     char c = in[22 + i];
-    ticker[i] = c == ' ' ? '\0': c;
+    ticker[i] = c == SPACE_CHAR ? NUL_CHAR : c;
   }
   memcpy(order.ticker, ticker, 8);
 
@@ -229,8 +259,7 @@ void Parser::mapAdd(const char *in, char ** outPtr) {
 
   order.side = in[17];
 
-  char padding[] = { 0x00, 0x00, 0x00 };
-  memcpy(order.padding, padding, 3);
+  memcpy(order.padding, PADDING, 3);
 
   order.size = readBigEndianUint32(in, 18);
   order.price = double(readBigEndianUint32(in, 30));
@@ -263,13 +292,12 @@ PendingOrder_t* Parser::lookupOrder(uint64_t orderRef) {
 }
 
 void Parser::mapExecuted(const char *in, char** outPtr) {
-  ExecutedOrder order;
+  OutputOrderExecuted order;
   char* out = *outPtr;
   
-  char msgType[] = { 0x00, 0x02 };
-  memcpy(order.msgType, msgType, 2);
+  memcpy(order.msgType, MSG_TYPE_2, 2);
 
-  order.msgSize = 40;
+  order.msgSize = OUTPUT_EXECUTE_PAYLOAD_SIZE;
 
   // Lookup add order using order ref.
   uint64_t orderRef = readBigEndianUint64(in, 9);
@@ -300,14 +328,12 @@ void Parser::mapExecuted(const char *in, char** outPtr) {
 }
 
 void Parser::mapReduced(const char* in, char** outPtr) {
-  ReducedOrder order;
+  OutputOrderReduced order;
   char* out = *outPtr;
 
-  char msgType[] = { 0x00, 0x03 };
-  memcpy(order.msgType, msgType, 2);
+  memcpy(order.msgType, MSG_TYPE_3, 2);
 
-  order.msgSize = 32;
-
+  order.msgSize = OUTPUT_CANCEL_PAYLOAD_SIZE;
 
   // Lookup add order using order ref.
   uint64_t orderRef = readBigEndianUint64(in, 9);
@@ -331,19 +357,20 @@ void Parser::mapReduced(const char* in, char** outPtr) {
 }
 
 void Parser::mapReplaced(const char *in, char ** outPtr) {
-  ReplacedOrder order;
+  OutputOrderReplaced order;
   char* out = *outPtr;
 
-  char msgType[] = { 0x00, 0x04 };
-  memcpy(order.msgType, msgType, 2);
+  assert(sizeof(order.msgType) == sizeof(MSG_TYPE_4));
+  memcpy(order.msgType, MSG_TYPE_4, sizeof(MSG_TYPE_4));
 
-  order.msgSize = 48;
+  order.msgSize = OUTPUT_REPLACE_PAYLOAD_SIZE;
 
   // Lookup add order using order ref.
   uint64_t oldOrderRef = readBigEndianUint64(in, 9);
   order.oldOrderRef = oldOrderRef;
   PendingOrder_t* pendingOrder = lookupOrder(oldOrderRef);
   pendingOrder->sizeRemaining = 0;
+  assert(sizeof(order.ticker) == sizeof(pendingOrder->ticker));
   memcpy(order.ticker, pendingOrder->ticker, sizeof(order.ticker));
 
   order.timestamp = epochToMidnightLocalNanos + readBigEndianUint64(in, 1);
@@ -362,6 +389,7 @@ void Parser::mapReplaced(const char *in, char ** outPtr) {
     price,
     size
   };
+
 
   memcpy(out, order.msgType, sizeof(order.msgType));
   memcpy(&out[2], &order.msgSize, sizeof(order.msgSize));
